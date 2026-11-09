@@ -1,4 +1,5 @@
 #import "GitPanel.h"
+#import "NppPaths.h"
 #import "GitHelper.h"
 #import "NppLocalizer.h"
 #import "StyleConfiguratorWindowController.h"
@@ -166,7 +167,7 @@ static NSString * const kLastRepoRootKey = @"GitPanelLastRepoRoot";
     self = [super initWithFrame:frame];
     if (self) {
         _items = @[];
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_Git"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_Git"]; _panelFontSize = z >= 8 ? z : 11; }
         [self _loadBulletImage];
         [self _buildUI];
         [self _setNoRepo:YES];
@@ -184,7 +185,7 @@ static NSString * const kLastRepoRootKey = @"GitPanelLastRepoRoot";
                    name:NPPLocalizationChanged object:nil];
         [self retranslateUI];
         // Restore last repo
-        NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:kLastRepoRootKey];
+        NSString *saved = [NppUserDefaults() stringForKey:kLastRepoRootKey];
         if (saved) {
             BOOL isDir = NO;
             if ([[NSFileManager defaultManager] fileExistsAtPath:saved isDirectory:&isDir] && isDir) {
@@ -460,7 +461,7 @@ static NSString * const kLastRepoRootKey = @"GitPanelLastRepoRoot";
         [_tableView reloadData];
         [self _setNoRepo:YES];
     } else {
-        [[NSUserDefaults standardUserDefaults] setObject:root forKey:kLastRepoRootKey];
+        [NppUserDefaults() setObject:root forKey:kLastRepoRootKey];
         [self _setNoRepo:NO];
     }
 }
@@ -668,7 +669,7 @@ static NSString * const kLastRepoRootKey = @"GitPanelLastRepoRoot";
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_Git"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_Git"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); _tableView.rowHeight = _panelFontSize + 8; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  _tableView.rowHeight = _panelFontSize + 8; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; _tableView.rowHeight = 19; [_tableView reloadData]; [self _saveZoom]; }

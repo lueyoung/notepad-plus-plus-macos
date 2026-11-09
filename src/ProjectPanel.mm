@@ -1,4 +1,5 @@
 #import "ProjectPanel.h"
+#import "NppPaths.h"
 #import "NppLocalizer.h"
 #import "NppThemeManager.h"
 #import "StyleConfiguratorWindowController.h"
@@ -344,7 +345,7 @@ static void _PPCollectFiles(_ProjectItem *item, NSMutableArray<NSString *> *out)
         for (int i = 0; i < 3; i++)
             _workspaces[i] = [[_ProjectWorkspace alloc] init];
         _activeTab = 0;
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_Project"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_Project"]; _panelFontSize = z >= 8 ? z : 11; }
         [self _buildUI];
         [self _applyTheme];
         [self _restoreState];
@@ -483,7 +484,7 @@ static void _PPCollectFiles(_ProjectItem *item, NSMutableArray<NSString *> *out)
 #pragma mark - State Persistence
 
 - (void)_restoreState {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     for (int i = 0; i < 3; i++) {
         NSString *key = [NSString stringWithFormat:kPrefWSPath, (long)i];
         NSString *path = [ud stringForKey:key];
@@ -498,7 +499,7 @@ static void _PPCollectFiles(_ProjectItem *item, NSMutableArray<NSString *> *out)
 }
 
 - (void)_saveState {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     for (int i = 0; i < 3; i++) {
         NSString *key = [NSString stringWithFormat:kPrefWSPath, (long)i];
         NSString *path = _workspaces[i].filePath;
@@ -1222,7 +1223,7 @@ static void _PPCollectFiles(_ProjectItem *item, NSMutableArray<NSString *> *out)
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_Project"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_Project"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); [_outlineView reloadData]; [_outlineView noteHeightOfRowsWithIndexesChanged:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [_outlineView numberOfRows])]]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  [_outlineView reloadData]; [_outlineView noteHeightOfRowsWithIndexesChanged:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [_outlineView numberOfRows])]]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; [_outlineView reloadData]; [_outlineView noteHeightOfRowsWithIndexesChanged:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [_outlineView numberOfRows])]]; [self _saveZoom]; }

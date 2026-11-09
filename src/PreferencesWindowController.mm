@@ -178,8 +178,8 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
     NSTextView           *_clickableSchemesTextView; // Cloud & Link page — URI customized schemes
 }
 
-+ (void)load {
-    [[NSUserDefaults standardUserDefaults] registerDefaults:@{
++ (void)registerApplicationDefaults {
+    [NppUserDefaults() registerDefaults:@{
         kPrefTabWidth:           @4,
         kPrefUseTabs:            @YES,
         kPrefAutoIndent:         @1,   // 0=None 1=Advanced 2=Basic
@@ -294,7 +294,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
         kPrefDelimEntireDoc:              @NO,
     }];
     // Force-upgrade any stale @NO value stored by earlier builds.
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if (![ud objectForKey:kPrefUseTabs]) {
     } else if ([ud objectForKey:@"_useTabsDefaultApplied"] == nil) {
         [ud setBool:YES forKey:kPrefUseTabs];
@@ -360,7 +360,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
         if (win == self.window) continue;
         if (win.toolbar) {
             BOOL actuallyVisible = win.toolbar.visible;
-            NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+            NSUserDefaults *ud = NppUserDefaults();
             if ([ud boolForKey:kPrefToolbarVisible] != actuallyVisible) {
                 [ud setBool:actuallyVisible forKey:kPrefToolbarVisible];
                 // Update the checkbox state.
@@ -415,7 +415,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
 
 - (void)_prefsChanged:(NSNotification *)note {
     // Update the "Hide" checkbox and color settings when the toolbar visibility changes.
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL isHidden = ![ud boolForKey:kPrefToolbarVisible];
     for (NSView *pageView in _pageViews.allValues) {
         NSButton *hideBtn = [pageView viewWithTag:903];
@@ -478,7 +478,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
 }
 
 - (void)registerDefaults {
-    [[NSUserDefaults standardUserDefaults] registerDefaults:@{
+    [NppUserDefaults() registerDefaults:@{
         kPrefTabWidth:           @4,
         kPrefUseTabs:            @YES,
         kPrefAutoIndent:         @1,   // 0=None 1=Advanced 2=Basic
@@ -813,7 +813,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
     NSButton *fullPath = [NSButton checkboxWithTitle:[[NppLocalizer shared] translate:@"Show full file path in title bar"]
                                               target:self action:@selector(prefChanged:)];
     fullPath.frame = NSMakeRect(20, y, 350, 20);
-    fullPath.state = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefShowFullPathInTitle]
+    fullPath.state = [NppUserDefaults() boolForKey:kPrefShowFullPathInTitle]
                      ? NSControlStateValueOn : NSControlStateValueOff;
     fullPath.tag = 900;
     [v addSubview:fullPath];
@@ -829,7 +829,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
     NSButton *showSB = [NSButton checkboxWithTitle:[[NppLocalizer shared] translate:@"Show status bar"]
                                             target:self action:@selector(prefChanged:)];
     showSB.frame = NSMakeRect(20, y, 350, 20);
-    showSB.state = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefShowStatusBar]
+    showSB.state = [NppUserDefaults() boolForKey:kPrefShowStatusBar]
                    ? NSControlStateValueOn : NSControlStateValueOff;
     showSB.tag = 901;
     [v addSubview:showSB];
@@ -845,7 +845,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
     NSButton *dockLeft = [NSButton checkboxWithTitle:[[NppLocalizer shared] translate:@"Dock side panels on the left"]
                                               target:self action:@selector(prefChanged:)];
     dockLeft.frame = NSMakeRect(20, y, 350, 20);
-    dockLeft.state = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft]
+    dockLeft.state = [NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft]
                      ? NSControlStateValueOn : NSControlStateValueOff;
     dockLeft.tag = 902;
     [v addSubview:dockLeft];
@@ -857,7 +857,7 @@ NSString *const kPrefStyleFontSize      = @"styleFontSize";
 
 - (NSView *)_buildToolbarPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NppLocalizer *loc = [NppLocalizer shared];
     CGFloat y = 380;
 
@@ -989,7 +989,7 @@ static NSPasteboardType const kLayoutRowPasteboardType = @"com.npp.toolbar.row";
 // re-surfaced); the Plugins group's universe comes from the file (the host
 // materializes all live plugins into it).
 - (void)_buildTahoeEditGroups {
-    NSArray<NSDictionary *> *loaded   = [ToolbarLayout load];
+    NSArray<NSDictionary *> *loaded   = [ToolbarLayout loadModel];
     NSArray<NSDictionary *> *defaults = [ToolbarLayout defaultBuiltinGroups];
 
     NSMutableDictionary<NSString *, NSDictionary *> *loadedByLabel = [NSMutableDictionary dictionary];
@@ -1118,7 +1118,7 @@ static NSPasteboardType const kLayoutRowPasteboardType = @"com.npp.toolbar.row";
 // Turn Tahoe mode on or off. Every copy of the checkbox follows, and a restart note shows.
 - (void)_layoutTahoeModeChanged:(NSButton *)sender {
     NSInteger style = sender.state == NSControlStateValueOn ? NppAppearanceTahoe : NppAppearanceClassic;
-    [[NSUserDefaults standardUserDefaults] setInteger:style forKey:kPrefAppearanceStyle];
+    [NppUserDefaults() setInteger:style forKey:kPrefAppearanceStyle];
     for (NSButton *box in _tahoeModeBoxes) box.state = sender.state;
     for (NSTextField *note in _tahoeModeNotes) note.hidden = NO;
 }
@@ -1258,24 +1258,24 @@ static NSPasteboardType const kLayoutRowPasteboardType = @"com.npp.toolbar.row";
 }
 
 - (void)_toolbarColorModeChanged:(NSButton *)sender {
-    [[NSUserDefaults standardUserDefaults] setInteger:sender.tag forKey:kPrefToolbarColorMode];
+    [NppUserDefaults() setInteger:sender.tag forKey:kPrefToolbarColorMode];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NPPToolbarColorChanged" object:nil];
 }
 
 - (void)_toolbarColorChoiceChanged:(NSButton *)sender {
-    [[NSUserDefaults standardUserDefaults] setInteger:sender.tag forKey:kPrefToolbarColorChoice];
+    [NppUserDefaults() setInteger:sender.tag forKey:kPrefToolbarColorChoice];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NPPToolbarColorChanged" object:nil];
 }
 
 - (void)_toolbarCustomColorChanged:(NSColorWell *)sender {
     NSData *d = [NSKeyedArchiver archivedDataWithRootObject:sender.color
                                      requiringSecureCoding:YES error:nil];
-    if (d) [[NSUserDefaults standardUserDefaults] setObject:d forKey:kPrefToolbarCustomColor];
+    if (d) [NppUserDefaults() setObject:d forKey:kPrefToolbarCustomColor];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NPPToolbarColorChanged" object:nil];
 }
 
 - (void)_toolbarColorPluginsChanged:(NSButton *)sender {
-    [[NSUserDefaults standardUserDefaults] setBool:(sender.state == NSControlStateValueOn)
+    [NppUserDefaults() setBool:(sender.state == NSControlStateValueOn)
                                             forKey:kPrefToolbarColorPlugins];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NPPToolbarColorChanged" object:nil];
 }
@@ -1402,7 +1402,7 @@ static NSPasteboardType const kLayoutRowPasteboardType = @"com.npp.toolbar.row";
 
 - (NSView *)_buildEditorPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
 
     NppLocalizer *loc = [NppLocalizer shared];
@@ -1524,7 +1524,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildIndentationPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NppLocalizer *loc = [NppLocalizer shared];
     CGFloat y = 380;
 
@@ -1688,7 +1688,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 // Resolve indent settings for the selected language.
 // Returns {tabSize, useTabs} from: user override → langs.xml tabSettings → global default.
 - (void)_getIndentForLang:(NSString *)lang tabSize:(NSInteger *)outSize useTabs:(BOOL *)outUseTabs hasOverride:(BOOL *)outHasOverride {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSInteger globalSize = [ud integerForKey:kPrefTabWidth];
     if (globalSize < 1) globalSize = 4;
     BOOL globalUseTabs = [ud boolForKey:kPrefUseTabs];
@@ -1796,7 +1796,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
             [self _saveIndentOverrideFromBox:sender.superview];
         } else if (useDefault) {
             // Remove per-language override
-            NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+            NSUserDefaults *ud = NppUserDefaults();
             NSMutableDictionary *overrides = [[ud dictionaryForKey:kPrefTabOverrides] mutableCopy] ?: [NSMutableDictionary dictionary];
             [overrides removeObjectForKey:_indentSelectedLang];
             [ud setObject:overrides forKey:kPrefTabOverrides];
@@ -1841,7 +1841,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
     }
     if (tabSize < 1) tabSize = 4;
 
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if (_indentSelectedLang != nil && _indentSelectedLang.length > 0) {
         // Per-language override
         NSMutableDictionary *overrides = [[ud dictionaryForKey:kPrefTabOverrides] mutableCopy] ?: [NSMutableDictionary dictionary];
@@ -1870,7 +1870,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
     // Save to appropriate target (global or per-language)
     if (_indentSelectedLang == nil) {
         // [Default] selected → save to global
-        [[NSUserDefaults standardUserDefaults] setBool:useTabs forKey:kPrefUseTabs];
+        [NppUserDefaults() setBool:useTabs forKey:kPrefUseTabs];
     } else {
         [self _saveIndentOverrideFromBox:box];
     }
@@ -1884,7 +1884,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
     if (sender.tag == 1311) mode = 2;
     else if (sender.tag == 1312) mode = 1;
 
-    [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:kPrefAutoIndent];
+    [NppUserDefaults() setInteger:mode forKey:kPrefAutoIndent];
 
     // Update sibling radios in the NSBox
     NSView *box = sender.superview;
@@ -1900,7 +1900,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildTabBarPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
     NppLocalizer *loc = [NppLocalizer shared];
 
@@ -1936,7 +1936,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildMarginsPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
     NppLocalizer *loc = [NppLocalizer shared];
 
@@ -2072,7 +2072,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildNewDocPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
 
     NppLocalizer *loc = [NppLocalizer shared];
@@ -2108,7 +2108,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildBackupPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
 
     NSButton *autoBackup = [NSButton checkboxWithTitle:[[NppLocalizer shared] translate:@"Enable auto-backup"]
@@ -2161,7 +2161,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildAutoCompletionPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
     NppLocalizer *loc = [NppLocalizer shared];
 
@@ -2198,7 +2198,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildSearchingPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
     NppLocalizer *loc = [NppLocalizer shared];
 
@@ -2246,7 +2246,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 // This wires the settings only — link detection/highlight/open is separate.
 - (NSView *)_buildCloudLinkPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NppLocalizer *loc = [NppLocalizer shared];
     CGFloat y = 380;
 
@@ -2323,7 +2323,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 // features remain active.
 - (NSView *)_buildPerformancePage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NppLocalizer *loc = [NppLocalizer shared];
     CGFloat y = 380;
 
@@ -2398,7 +2398,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 // ⌘ on this platform. The Preferences label reflects that.
 - (NSView *)_buildDelimiterPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NppLocalizer *loc = [NppLocalizer shared];
     CGFloat y = 380;
 
@@ -2508,7 +2508,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (NSView *)_buildMiscPage {
     NSView *v = [[NSView alloc] init];
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     CGFloat y = 380;
     NppLocalizer *loc = [NppLocalizer shared];
 
@@ -2649,7 +2649,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 }
 
 - (void)prefChanged:(id)sender {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSInteger tag = [(NSControl *)sender tag];
 
     // A text field commits when its edit session ends, which includes ending one
@@ -2906,7 +2906,7 @@ static NSDictionary<NSString *, NSString *> *_langDisplayNames() {
 
 - (void)_saveClickableSchemes {
     if (!_clickableSchemesTextView) return;
-    [[NSUserDefaults standardUserDefaults] setObject:(_clickableSchemesTextView.string ?: @"")
+    [NppUserDefaults() setObject:(_clickableSchemesTextView.string ?: @"")
                                               forKey:kPrefClickableLinkSchemes];
 }
 

@@ -42,7 +42,7 @@
 
 - (void)testSaveThenLoadRoundTrips {
     XCTAssertTrue([ToolbarLayout saveModel:[self sampleModel]]);
-    NSArray *loaded = [ToolbarLayout load];
+    NSArray *loaded = [ToolbarLayout loadModel];
     XCTAssertEqual(loaded.count, 3);
 
     NSDictionary *file = loaded[0];
@@ -70,14 +70,14 @@
     NSString *path = [self.dir stringByAppendingPathComponent:@"toolbarLayout.xml"];
     [xml writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    NSArray *loaded = [ToolbarLayout load];
+    NSArray *loaded = [ToolbarLayout loadModel];
     XCTAssertEqual(loaded.count, 1);
     XCTAssertTrue([loaded[0][@"visible"] boolValue]);
     XCTAssertEqualObjects(loaded[0][@"primary"], @[@"TB_ZoomIn"]);
 }
 
 - (void)testLoadReturnsNilWhenNothingExists {
-    XCTAssertNil([ToolbarLayout load]);
+    XCTAssertNil([ToolbarLayout loadModel]);
 }
 
 - (void)testLegacyTahoeFileIsMigratedOnce {
@@ -89,7 +89,7 @@
     NSString *legacy = [self.dir stringByAppendingPathComponent:@"toolbarButtonsTahoeConf.xml"];
     [legacyXML writeToFile:legacy atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    NSArray *migrated = [ToolbarLayout load];
+    NSArray *migrated = [ToolbarLayout loadModel];
     XCTAssertEqual(migrated.count, 1);
     XCTAssertEqualObjects(migrated[0][@"primary"], @[@"TB_Copy"]);
 
@@ -99,13 +99,13 @@
     XCTAssertTrue([fm fileExistsAtPath:[legacy stringByAppendingString:@".bak"]]);
 
     // The second load reads the new file, not the legacy one.
-    XCTAssertEqualObjects([ToolbarLayout load][0][@"primary"], @[@"TB_Copy"]);
+    XCTAssertEqualObjects([ToolbarLayout loadModel][0][@"primary"], @[@"TB_Copy"]);
 }
 
 - (void)testRemoveFileResetsToNothing {
     XCTAssertTrue([ToolbarLayout saveModel:[self sampleModel]]);
     [ToolbarLayout removeFile];
-    XCTAssertNil([ToolbarLayout load]);
+    XCTAssertNil([ToolbarLayout loadModel]);
 }
 
 @end

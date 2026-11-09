@@ -1,4 +1,5 @@
 #import "SearchResultsPanel.h"
+#import "NppPaths.h"
 #import "NppThemeManager.h"
 #import "StyleConfiguratorWindowController.h"
 #import "NppLocalizer.h"
@@ -67,8 +68,8 @@ struct _SRLineInfo {
         }
         _markingsStruct._length   = 0;
         _markingsStruct._markings = nullptr;
-        _wordWrapEnabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"SearchResultsWordWrap"];
-        _purgeBeforeSearch = [[NSUserDefaults standardUserDefaults] boolForKey:@"SearchResultsPurge"];
+        _wordWrapEnabled = [NppUserDefaults() boolForKey:@"SearchResultsWordWrap"];
+        _purgeBeforeSearch = [NppUserDefaults() boolForKey:@"SearchResultsPurge"];
 
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_themeChanged:)
                                                      name:@"NPPPreferencesChanged" object:nil];
@@ -168,7 +169,7 @@ struct _SRLineInfo {
         [_sci message:SCI_SETWRAPMODE wParam:SC_WRAP_WORD];
 
     // Apply persisted zoom level
-    NSInteger savedZoom = [[NSUserDefaults standardUserDefaults] integerForKey:@"PanelZoom_SearchResults"];
+    NSInteger savedZoom = [NppUserDefaults() integerForKey:@"PanelZoom_SearchResults"];
     if (savedZoom != 0)
         [_sci message:SCI_SETZOOM wParam:(uptr_t)savedZoom];
 
@@ -847,12 +848,12 @@ static sptr_t _srSciColor(NSColor *c) {
 - (void)_toggleWordWrap:(id)sender {
     _wordWrapEnabled = !_wordWrapEnabled;
     [_sci message:SCI_SETWRAPMODE wParam:_wordWrapEnabled ? SC_WRAP_WORD : SC_WRAP_NONE];
-    [[NSUserDefaults standardUserDefaults] setBool:_wordWrapEnabled forKey:@"SearchResultsWordWrap"];
+    [NppUserDefaults() setBool:_wordWrapEnabled forKey:@"SearchResultsWordWrap"];
 }
 
 - (void)_togglePurge:(id)sender {
     _purgeBeforeSearch = !_purgeBeforeSearch;
-    [[NSUserDefaults standardUserDefaults] setBool:_purgeBeforeSearch forKey:@"SearchResultsPurge"];
+    [NppUserDefaults() setBool:_purgeBeforeSearch forKey:@"SearchResultsPurge"];
 }
 
 - (void)_findInResults:(id)sender {
@@ -1035,8 +1036,8 @@ static sptr_t _srSciColor(NSColor *c) {
 
 #pragma mark - Panel Zoom
 
-- (void)panelZoomIn   { [_sci message:SCI_ZOOMIN]; [[NSUserDefaults standardUserDefaults] setInteger:[_sci message:SCI_GETZOOM] forKey:@"PanelZoom_SearchResults"]; }
-- (void)panelZoomOut  { [_sci message:SCI_ZOOMOUT]; [[NSUserDefaults standardUserDefaults] setInteger:[_sci message:SCI_GETZOOM] forKey:@"PanelZoom_SearchResults"]; }
-- (void)panelZoomReset { [_sci message:SCI_SETZOOM wParam:0]; [[NSUserDefaults standardUserDefaults] setInteger:0 forKey:@"PanelZoom_SearchResults"]; }
+- (void)panelZoomIn   { [_sci message:SCI_ZOOMIN]; [NppUserDefaults() setInteger:[_sci message:SCI_GETZOOM] forKey:@"PanelZoom_SearchResults"]; }
+- (void)panelZoomOut  { [_sci message:SCI_ZOOMOUT]; [NppUserDefaults() setInteger:[_sci message:SCI_GETZOOM] forKey:@"PanelZoom_SearchResults"]; }
+- (void)panelZoomReset { [_sci message:SCI_SETZOOM wParam:0]; [NppUserDefaults() setInteger:0 forKey:@"PanelZoom_SearchResults"]; }
 
 @end

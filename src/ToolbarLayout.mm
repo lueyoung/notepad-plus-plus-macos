@@ -109,7 +109,7 @@ static NSDictionary<NSString *, NSString *> *sDisplayNames = nil;
     return model.count ? model : nil;
 }
 
-+ (nullable NSArray<NSDictionary *> *)load {
++ (nullable NSArray<NSDictionary *> *)loadModel {
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *path = [self filePath];
 

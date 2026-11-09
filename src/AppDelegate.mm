@@ -99,7 +99,7 @@ static void NppRecoveryDone(void) {
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     // Disable the macOS press-and-hold accent picker so key repeat works in the editor.
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"ApplePressAndHoldEnabled"];
+    [NppUserDefaults() setBool:NO forKey:@"ApplePressAndHoldEnabled"];
 
     // Issue #126 — wire the "Open with NP++" Finder service. The NSServices
     // entry in Info.plist declares the menu item; this registers the object that
@@ -124,7 +124,7 @@ static void NppRecoveryDone(void) {
 
     // On first launch, auto-detect language from macOS system preferences.
     // Maps ISO language codes to our XML filename stems.
-    if (![[NSUserDefaults standardUserDefaults] objectForKey:kPrefLanguage]) {
+    if (![NppUserDefaults() objectForKey:kPrefLanguage]) {
         static NSDictionary *langCodeMap = nil;
         static dispatch_once_t once;
         dispatch_once(&once, ^{
@@ -171,7 +171,7 @@ static void NppRecoveryDone(void) {
             stem = langCodeMap[base];
         }
         if (stem) {
-            [[NSUserDefaults standardUserDefaults] setObject:stem forKey:kPrefLanguage];
+            [NppUserDefaults() setObject:stem forKey:kPrefLanguage];
         }
     }
 
@@ -226,7 +226,7 @@ static void NppRecoveryDone(void) {
             [self _openFilesFromCLI:cli inController:self.mainWindowController];
             hasContent = YES;
         } else if (!cli.noSession &&
-                   [[NSUserDefaults standardUserDefaults] boolForKey:kPrefRememberSession]) {
+                   [NppUserDefaults() boolForKey:kPrefRememberSession]) {
             // Issue #87 — Preferences > Backup > "Remember current session for next launch"
             // mirrors the Windows NPP RememberLastSession option. Off → start with a clean
             // editor on each launch. -nosession CLI flag still overrides per-invocation.
@@ -563,6 +563,9 @@ static void NppRecoveryDone(void) {
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
     [[NppPluginManager shared] shutdown];
+    NSError *settingsError = nil;
+    if (!NppSaveProfilePreferences(&settingsError))
+        NSLog(@"[Config] Could not save profile preferences: %@", settingsError);
     if (sOwnsRunMarker)
         [[NSFileManager defaultManager] removeItemAtPath:NppRunMarkerPath() error:nil];
 }

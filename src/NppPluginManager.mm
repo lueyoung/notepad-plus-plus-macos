@@ -658,7 +658,7 @@ static intptr_t _npp_run_on_main(intptr_t (^block)(void)) {
         case NPPM_GETCURRENTSCINTILLA: {
             // Write 0 (main) or 1 (sub) to *lParam
             int viewId = MAIN_VIEW;
-            if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefPluginSplitViewRouting]) {
+            if ([NppUserDefaults() boolForKey:kPrefPluginSplitViewRouting]) {
                 MainWindowController *mwc = _mwc;
                 if (mwc) {
                     EditorView *focused = [mwc currentEditor];
@@ -675,7 +675,7 @@ static intptr_t _npp_run_on_main(intptr_t (^block)(void)) {
         }
 
         case NPPM_GETCURRENTVIEW: {
-            if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefPluginSplitViewRouting]) {
+            if ([NppUserDefaults() boolForKey:kPrefPluginSplitViewRouting]) {
                 MainWindowController *mwc = _mwc;
                 if (mwc) {
                     EditorView *focused = [mwc currentEditor];
@@ -1495,7 +1495,7 @@ static intptr_t _npp_run_on_main(intptr_t (^block)(void)) {
 
     EditorView *ed = nil;
 
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefPluginSplitViewRouting]) {
+    if ([NppUserDefaults() boolForKey:kPrefPluginSplitViewRouting]) {
         // Route based on handle: main handle → primary editor, sub handle → secondary editor
         int viewId = (handle == kHandleScintillaSub) ? SUB_VIEW : MAIN_VIEW;
         ed = [mwc editorForPluginView:viewId];

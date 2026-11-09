@@ -1,4 +1,5 @@
 #import "FloatingPanelWindow.h"
+#import "NppPaths.h"
 #import "PanelFrame.h"
 #import "NppThemeManager.h"
 
@@ -303,7 +304,7 @@ static NSImage *_FPWLoadPinIcon(BOOL pinned) {
     if (frame.contentView) {
         NSString *cls = NSStringFromClass([frame.contentView class]);
         NSString *autosave = [@"NppFloatingPanelRect_" stringByAppendingString:cls];
-        NSString *savedRectStr = [[NSUserDefaults standardUserDefaults] stringForKey:autosave];
+        NSString *savedRectStr = [NppUserDefaults() stringForKey:autosave];
         if (savedRectStr.length > 0) {
             NSRect rect = NSRectFromString(savedRectStr);
             BOOL isVisible = NO;
@@ -347,7 +348,7 @@ static NSImage *_FPWLoadPinIcon(BOOL pinned) {
 - (BOOL)_loadPinnedStateDefault:(BOOL)fallback {
     NSString *key = [self _pinDefaultsKey];
     if (key.length == 0) return fallback;
-    NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *d = NppUserDefaults();
     if ([d objectForKey:key] == nil) return fallback;
     return [d boolForKey:key];
 }
@@ -355,7 +356,7 @@ static NSImage *_FPWLoadPinIcon(BOOL pinned) {
 - (void)_persistPinnedState:(BOOL)pinned {
     NSString *key = [self _pinDefaultsKey];
     if (key.length == 0) return;
-    [[NSUserDefaults standardUserDefaults] setBool:pinned forKey:key];
+    [NppUserDefaults() setBool:pinned forKey:key];
 }
 
 // Apply pin state to the window + button. Centralises so the init
@@ -431,7 +432,7 @@ static NSImage *_FPWLoadPinIcon(BOOL pinned) {
     if (!self.panelFrame.contentView) return;
     NSString *cls = NSStringFromClass([self.panelFrame.contentView class]);
     NSString *autosave = [@"NppFloatingPanelRect_" stringByAppendingString:cls];
-    [[NSUserDefaults standardUserDefaults] setObject:NSStringFromRect(self.frame) forKey:autosave];
+    [NppUserDefaults() setObject:NSStringFromRect(self.frame) forKey:autosave];
 }
 
 // Red traffic-light close: route through the PanelFrame's close chain so

@@ -1,4 +1,5 @@
 #import "FindWindow.h"
+#import "NppPaths.h"
 #import "EditorView.h"
 #import "SearchResultsPanel.h"
 #import "ProjectPanel.h"
@@ -392,7 +393,7 @@ static void _placeChk(NSView *parent, NSButton *chk, CGFloat x, CGFloat y) {
 /// doesn't clip subviews, so the slider's slightly-negative y renders fine in
 /// the gap above the status bar. idx selects the per-tab slot (0=Find, 1=Replace).
 - (void)_buildTransparencyGroup:(int)idx inView:(NSView *)parent {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL enabled   = [ud boolForKey:kPrefFindTransparencyEnabled];
     NSInteger mode = [ud integerForKey:kPrefFindTransparencyMode];
     double alpha   = [ud doubleForKey:kPrefFindTransparencyAlpha];
@@ -824,7 +825,7 @@ static CGFloat _fromTop(NSView *container, CGFloat topOffset, CGFloat height) {
 - (void)_addToHistory:(NSComboBox *)combo key:(NSString *)key {
     NSString *text = combo.stringValue;
     if (!text.length) return;
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSMutableArray *h = [[ud arrayForKey:key] mutableCopy] ?: [NSMutableArray array];
     [h removeObject:text];
     [h insertObject:text atIndex:0];
@@ -836,7 +837,7 @@ static CGFloat _fromTop(NSView *container, CGFloat topOffset, CGFloat height) {
 }
 
 - (void)_restoreHistory {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSArray *a;
     if ((a = [ud arrayForKey:kHistoryFind]).count)    { [_findCombo    removeAllItems]; [_findCombo    addItemsWithObjectValues:a]; }
     if ((a = [ud arrayForKey:kHistoryReplace]).count)  { [_replaceCombo removeAllItems]; [_replaceCombo addItemsWithObjectValues:a]; }
@@ -1336,7 +1337,7 @@ doCommandBySelector:(SEL)commandSelector {
 
 - (void)_transparencyToggled:(NSButton *)sender {
     BOOL on = (sender.state == NSControlStateValueOn);
-    [[NSUserDefaults standardUserDefaults] setBool:on forKey:kPrefFindTransparencyEnabled];
+    [NppUserDefaults() setBool:on forKey:kPrefFindTransparencyEnabled];
     [self _syncTransparencyControls];
     [self _applyTransparency];
 }
@@ -1345,14 +1346,14 @@ doCommandBySelector:(SEL)commandSelector {
     // Sender is one of the per-tab radios; an "Always" radio means mode 1.
     BOOL always = NO;
     for (int i = 0; i < 5; i++) if (sender == _trAlways[i]) { always = YES; break; }
-    [[NSUserDefaults standardUserDefaults] setInteger:(always ? 1 : 0)
+    [NppUserDefaults() setInteger:(always ? 1 : 0)
                                                forKey:kPrefFindTransparencyMode];
     [self _syncTransparencyControls];
     [self _applyTransparency];
 }
 
 - (void)_transparencyAlphaChanged:(NSSlider *)sender {
-    [[NSUserDefaults standardUserDefaults] setDouble:sender.doubleValue
+    [NppUserDefaults() setDouble:sender.doubleValue
                                               forKey:kPrefFindTransparencyAlpha];
     [self _syncTransparencyControls];
     [self _applyTransparency];
@@ -1362,7 +1363,7 @@ doCommandBySelector:(SEL)commandSelector {
 /// Find and Replace tabs always agree, and gray out the sub-controls when the
 /// feature is off.
 - (void)_syncTransparencyControls {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL enabled   = [ud boolForKey:kPrefFindTransparencyEnabled];
     NSInteger mode = [ud integerForKey:kPrefFindTransparencyMode];
     double alpha   = [ud doubleForKey:kPrefFindTransparencyAlpha];
@@ -1380,7 +1381,7 @@ doCommandBySelector:(SEL)commandSelector {
 
 /// Set the window alpha from the current setting and key state.
 - (void)_applyTransparency {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL enabled   = [ud boolForKey:kPrefFindTransparencyEnabled];
     NSInteger mode = [ud integerForKey:kPrefFindTransparencyMode];
     double alpha   = [ud doubleForKey:kPrefFindTransparencyAlpha];

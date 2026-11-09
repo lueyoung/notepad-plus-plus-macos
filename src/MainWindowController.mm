@@ -342,7 +342,7 @@ static BOOL _shBool(NSString *s) { return [s.lowercaseString isEqualToString:@"s
 
 /// Write current preferences from NSUserDefaults to ~/Library/Application Support/NP++/config.xml.
 void writeConfigXML(void) {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
 
     // Convenience: read prefs
     BOOL useTabs       = [ud boolForKey:kPrefUseTabs];
@@ -574,7 +574,7 @@ void readConfigXML(void) {
     NSArray<NSXMLElement *> *configs = [doc nodesForXPath:@"//GUIConfigs/GUIConfig" error:nil];
     if (!configs.count) return;
 
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
 
     for (NSXMLElement *el in configs) {
         NSString *name = [[el attributeForName:@"name"] stringValue];
@@ -1081,7 +1081,7 @@ static CGFloat _scaledCornerR     =  3.0;
 static void _ensureToolbarMetrics(void) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        double s = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefToolbarIconScale];
+        double s = [NppUserDefaults() doubleForKey:kPrefToolbarIconScale];
         // Defensive clamp — stale or hand-edited values fall back to 100 %.
         if (s < 0.50 - 1e-6 || s > 1.50 + 1e-6) s = 1.0;
         _scaledBtn      = round(28.0 * s);
@@ -1117,7 +1117,7 @@ static CGFloat nppToolbarCornerR(void) { _ensureToolbarMetrics(); return _scaled
 
 // Resolves the chosen target color from kPrefToolbarColorChoice (+ accent/custom).
 static NSColor *_nppToolbarTargetColor(void) {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     switch ([ud integerForKey:kPrefToolbarColorChoice]) {
         case 0: return [NSColor colorWithSRGBRed:0xE8/255.0 green:0x11/255.0 blue:0x23/255.0 alpha:1]; // red
         case 1: return [NSColor colorWithSRGBRed:0x00/255.0 green:0x8B/255.0 blue:0x00/255.0 alpha:1]; // green
@@ -1181,7 +1181,7 @@ static void _hsv2rgb(double h, double s, double v, double *r, double *g, double 
 // input unchanged when colorization is off or on failure (fail-safe).
 static NSImage *_nppColorizeToolbarImage(NSImage *img) {
     if (!img) return img;
-    NSInteger mode = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefToolbarColorMode];
+    NSInteger mode = [NppUserDefaults() integerForKey:kPrefToolbarColorMode];
     if (mode == 0) return img;   // Off
 
     NSSize sz = img.size;
@@ -1222,7 +1222,7 @@ static NSImage *_nppColorizeToolbarImage(NSImage *img) {
     // light mode already read correctly with the source saturation untouched, and
     // boosting them would over-saturate and flatten their gradients.
     double satFloor = ([NppThemeManager shared].isDark &&
-                       [[NSUserDefaults standardUserDefaults] integerForKey:kPrefToolbarColorChoice] == 0)
+                       [NppUserDefaults() integerForKey:kPrefToolbarColorChoice] == 0)
                       ? 0.90 : 0.0;
 
     CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
@@ -2162,8 +2162,8 @@ static void _nppTahoeRoundEditorCard(NSView *container, NSView *content) {
     if (self) {
         // Disable macOS automatic window state restoration — we use our own session system
         window.restorable = NO;
-        _showLineNumbers = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefShowLineNumbers];
-        _showIndentGuides = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefShowIndentGuides];
+        _showLineNumbers = [NppUserDefaults() boolForKey:kPrefShowLineNumbers];
+        _showIndentGuides = [NppUserDefaults() boolForKey:kPrefShowIndentGuides];
         window.delegate = self;
         [self buildToolbar];
         [self buildContentView];
@@ -2350,7 +2350,7 @@ static NSString *const kPrefWindowOpacity = @"NPPWindowOpacity";
 static const double kMinWindowOpacity = 0.3;
 
 - (double)_savedWindowOpacity {
-    double a = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefWindowOpacity];
+    double a = [NppUserDefaults() doubleForKey:kPrefWindowOpacity];
     if (a < kMinWindowOpacity || a > 1.0) a = 1.0;
     return a;
 }
@@ -2393,7 +2393,7 @@ static const double kMinWindowOpacity = 0.3;
 - (void)windowOpacitySliderChanged:(NSSlider *)slider {
     double a = slider.doubleValue / 100.0;
     if (a < kMinWindowOpacity) a = kMinWindowOpacity;
-    [[NSUserDefaults standardUserDefaults] setDouble:a forKey:kPrefWindowOpacity];
+    [NppUserDefaults() setDouble:a forKey:kPrefWindowOpacity];
     self.window.alphaValue = a;
     NSTextField *label = (NSTextField *)[slider.superview viewWithTag:9002];
     label.stringValue = [NSString stringWithFormat:@"Opacity %d%%", (int)round(a * 100)];
@@ -2415,15 +2415,15 @@ static const double kMinWindowOpacity = 0.3;
 
 // View > Editor Theme: the tag is the mode (0 follow app, 1 light, 2 dark).
 - (void)setEditorTheme:(NSMenuItem *)sender {
-    [[NSUserDefaults standardUserDefaults] setInteger:sender.tag forKey:kPrefEditorTheme];
+    [NppUserDefaults() setInteger:sender.tag forKey:kPrefEditorTheme];
     [self _applyEditorThemeToAll];
 }
 
 // Toolbar button: flips the editor between light and dark.
 - (void)toggleEditorThemeFromToolbar:(id)sender {
-    NSInteger mode = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefEditorTheme];
+    NSInteger mode = [NppUserDefaults() integerForKey:kPrefEditorTheme];
     BOOL darkShown = (mode == 2) || (mode == 0 && [NppThemeManager shared].isDark);
-    [[NSUserDefaults standardUserDefaults] setInteger:(darkShown ? 1 : 2) forKey:kPrefEditorTheme];
+    [NppUserDefaults() setInteger:(darkShown ? 1 : 2) forKey:kPrefEditorTheme];
     [self _applyEditorThemeToAll];
 }
 
@@ -3003,7 +3003,7 @@ static NSImage *_loadPluginIconFromDirs(NSArray<NSString *> *dirs, NSString *fil
     if (icon) {
         icon.size = NSMakeSize(nppIconSize(), nppIconSize());
         // Extend toolbar colorization to plugin icons when the user opts in.
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefToolbarColorPlugins]) {
+        if ([NppUserDefaults() boolForKey:kPrefToolbarColorPlugins]) {
             icon = _nppColorizeToolbarImage(icon);
             if (icon) icon.size = NSMakeSize(nppIconSize(), nppIconSize());
         }
@@ -3159,7 +3159,7 @@ static NSDictionary<NSString *, NSString *> *_tahoeButtonDisplayNames(void) {
     [ToolbarLayout setDefaultBuiltinGroups:_tahoeDefaultBuiltinGroupDicts()];
     [ToolbarLayout setButtonDisplayNames:_tahoeButtonDisplayNames()];
 
-    NSArray<NSDictionary *> *model = [ToolbarLayout load];
+    NSArray<NSDictionary *> *model = [ToolbarLayout loadModel];
     if (!model) {
         // First use (or after Reset): defaults + current plugins, persisted.
         NSMutableArray *m = [_tahoeDefaultBuiltinGroupDicts() mutableCopy];
@@ -4082,7 +4082,7 @@ static BOOL groupHasTrailingSep(NSString *ident) {
     // the notification was posted, so it's always current. Both UI
     // surfaces (toolbar/menu toggle path and Preferences-pane path)
     // write the pref first, so it's the authoritative cross-source.
-    _tbWrap.toggledOn = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefWordWrap];
+    _tbWrap.toggledOn = [NppUserDefaults() boolForKey:kPrefWordWrap];
     [_tbWrap setNeedsDisplay:YES];
     [self _refreshContentToolbarEnabled];
 
@@ -4206,7 +4206,7 @@ static BOOL groupHasTrailingSep(NSString *ident) {
 
     NppTabBar *primaryTabBar = _tabManager.tabBar;
     primaryTabBar.translatesAutoresizingMaskIntoConstraints = NO;
-    primaryTabBar.wrapMode = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefTabBarWrap];
+    primaryTabBar.wrapMode = [NppUserDefaults() boolForKey:kPrefTabBarWrap];
     [primaryTabBar setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationVertical];
     [primaryTabBar setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationVertical];
     NSView *primaryContentView = _tabManager.contentView;
@@ -4323,7 +4323,7 @@ static BOOL groupHasTrailingSep(NSString *ident) {
     // #183: apply the persisted "Hide tab bar" state at launch — placed AFTER both
     // secondary tab bars are built so all three bars (primary + H + V) are
     // collapsed/shown together (their constraint ivars exist by this point).
-    [self _applyTabBarVisibility:[[NSUserDefaults standardUserDefaults] boolForKey:kPrefHideTabBar]];
+    [self _applyTabBarVisibility:[NppUserDefaults() boolForKey:kPrefHideTabBar]];
 
     // ── Left/right split between primary and vertical secondary ───────────────
     _vSplitView = [[NppGapSplitView alloc] init];   // Tahoe: 12pt transparent gap between editor panes (gated)
@@ -4467,7 +4467,7 @@ static BOOL groupHasTrailingSep(NSString *ident) {
     _editorSplitView.dividerStyle = NSSplitViewDividerStyleThin;
     _editorSplitView.delegate = self;
     _editorSplitView.translatesAutoresizingMaskIntoConstraints = NO;
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft]) {
+    if ([NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft]) {
         [_editorSplitView addSubview:_sidePanelHost];
         [_editorSplitView addSubview:_hSplitView];
     } else {
@@ -4587,7 +4587,7 @@ static BOOL groupHasTrailingSep(NSString *ident) {
         [NSTimer scheduledTimerWithTimeInterval:0.5 target:self
                                        selector:@selector(_refreshContentToolbarEnabled)
                                        userInfo:nil repeats:YES];
-        BOOL shown = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefToolbarVisible];
+        BOOL shown = [NppUserDefaults() boolForKey:kPrefToolbarVisible];
         CGFloat rowHeight = _tahoeGlass ? 60.0 : 34.0;
         _contentToolbarHeight = [_contentToolbar.heightAnchor constraintEqualToConstant:(shown ? rowHeight : 0.0)];
         _contentToolbar.hidden = !shown;
@@ -4631,7 +4631,7 @@ static BOOL groupHasTrailingSep(NSString *ident) {
     dispatch_async(dispatch_get_main_queue(), ^{
         [self->_vSplitView   setPosition:MAX(NSWidth(self->_vSplitView.frame),   9999) ofDividerAtIndex:0];
         [self->_hSplitView   setPosition:MAX(NSHeight(self->_hSplitView.frame),  9999) ofDividerAtIndex:0];
-        BOOL dockLeft = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft];
+        BOOL dockLeft = [NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft];
         [self->_editorSplitView setPosition:(dockLeft ? 0 : MAX(NSWidth(self->_editorSplitView.frame), 9999)) ofDividerAtIndex:0];
         // Collapse search results panel initially
         [self->_searchSplitView setPosition:NSHeight(self->_searchSplitView.frame) ofDividerAtIndex:0];
@@ -5470,7 +5470,7 @@ static void removeMacroFromShortcutsXML(NSString *name) {
 #pragma mark - Recent Files
 
 - (void)addToRecentFiles:(NSString *)path {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSMutableArray *recents = [([ud stringArrayForKey:@"RecentFiles"] ?: @[]) mutableCopy];
     [recents removeObject:path];
     [recents insertObject:path atIndex:0];
@@ -5485,7 +5485,7 @@ static void removeMacroFromShortcutsXML(NSString *name) {
     if (!recentItem) return;
     NSMenu *recentMenu = recentItem.submenu;
     [recentMenu removeAllItems];
-    NSArray<NSString *> *recents = [[NSUserDefaults standardUserDefaults]
+    NSArray<NSString *> *recents = [NppUserDefaults()
                                      stringArrayForKey:@"RecentFiles"] ?: @[];
     for (NSString *path in recents) {
         NSMenuItem *it = [[NSMenuItem alloc] initWithTitle:path.lastPathComponent
@@ -5518,7 +5518,7 @@ static void removeMacroFromShortcutsXML(NSString *name) {
 }
 
 - (void)clearRecentFiles:(id)sender {
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"RecentFiles"];
+    [NppUserDefaults() removeObjectForKey:@"RecentFiles"];
     [self rebuildRecentFilesMenu];
 }
 
@@ -6342,8 +6342,8 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
         [_sidePanelHost showPanel:panel withTitle:localized];
         if ([_sidePanelHost hasVisiblePanels] && [_editorSplitView isSubviewCollapsed:_sidePanelHost]) {
             CGFloat w = NSWidth(_editorSplitView.frame);
-            BOOL dockLeft = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft];
-            CGFloat targetWidth = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefSidePanelWidth];
+            BOOL dockLeft = [NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft];
+            CGFloat targetWidth = [NppUserDefaults() doubleForKey:kPrefSidePanelWidth];
             if (targetWidth < 150) targetWidth = 280;
             CGFloat position = dockLeft ? MIN(w - 200, targetWidth) : MAX(200, w - targetWidth);
             [_editorSplitView setPosition:position ofDividerAtIndex:0];
@@ -6358,7 +6358,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
         [_sidePanelHost hidePanel:panel];
         [_panelTitleKeys removeObjectForKey:panel];
         if (!_sidePanelHost.hasVisiblePanels) {
-            BOOL dockLeft = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft];
+            BOOL dockLeft = [NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft];
             CGFloat position = dockLeft ? 0 : NSWidth(_editorSplitView.frame);
             [_editorSplitView setPosition:position ofDividerAtIndex:0];
         }
@@ -6382,7 +6382,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
             [openPanels addObject:@{@"id": key, @"popped": @(popped)}];
         }
     }
-    [[NSUserDefaults standardUserDefaults] setObject:openPanels forKey:kOpenSidePanelsKey];
+    [NppUserDefaults() setObject:openPanels forKey:kOpenSidePanelsKey];
 }
 
 // Re-open the side panels that were open at last quit (issue #132).
@@ -6390,8 +6390,8 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 // AppDelegate after the primary window is shown, so secondary windows
 // (Window > New Window) do not inherit the restore.
 - (void)restoreSidePanels {
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:kPrefPanelKeepState]) return;
-    NSArray *saved = [[NSUserDefaults standardUserDefaults] arrayForKey:kOpenSidePanelsKey];
+    if (![NppUserDefaults() boolForKey:kPrefPanelKeepState]) return;
+    NSArray *saved = [NppUserDefaults() arrayForKey:kOpenSidePanelsKey];
     if (![saved isKindOfClass:[NSArray class]]) return;
 
     NSDictionary<NSString *, NSString *> *whitelist = _restorableSidePanels();
@@ -6489,13 +6489,13 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 // (everything is popped), re-expand when a dock-back brings a panel into
 // an otherwise-empty pane.
 - (void)sidePanelHostDidChangePanelLayout:(SidePanelHost *)host {
-    BOOL dockLeft = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft];
+    BOOL dockLeft = [NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft];
     if (!host.hasVisiblePanels) {
         CGFloat position = dockLeft ? 0 : NSWidth(_editorSplitView.frame);
         [_editorSplitView setPosition:position ofDividerAtIndex:0];
     } else if ([_editorSplitView isSubviewCollapsed:_sidePanelHost]) {
         CGFloat w = NSWidth(_editorSplitView.frame);
-        CGFloat targetWidth = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefSidePanelWidth];
+        CGFloat targetWidth = [NppUserDefaults() doubleForKey:kPrefSidePanelWidth];
         if (targetWidth < 150) targetWidth = 280;
         CGFloat position = dockLeft ? MIN(w - 200, targetWidth) : MAX(200, w - targetWidth);
         [_editorSplitView setPosition:position ofDividerAtIndex:0];
@@ -6630,7 +6630,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
             path ? [NSURL fileURLWithPath:path] : [NSURL fileURLWithPath:NSHomeDirectory()]];
     }
     [self _setPanelVisible:_folderTreePanel title:@"Folder as Workspace" show:!open];
-    [[NSUserDefaults standardUserDefaults] setBool:!open forKey:@"FolderTreePanelVisible"];
+    [NppUserDefaults() setBool:!open forKey:@"FolderTreePanelVisible"];
 }
 
 - (void)showGitPanel:(id)sender {
@@ -6865,7 +6865,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     _tabManager.tabBar.wrapMode     = newWrap;
     _subTabManagerH.tabBar.wrapMode = newWrap;
     _subTabManagerV.tabBar.wrapMode = newWrap;
-    [[NSUserDefaults standardUserDefaults] setBool:newWrap forKey:kPrefTabBarWrap];
+    [NppUserDefaults() setBool:newWrap forKey:kPrefTabBarWrap];
 }
 
 #pragma mark - Sort Tabs
@@ -7039,7 +7039,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     BOOL recording = ed && ed.isRecordingMacro;
 
     if (action == @selector(setEditorTheme:)) {
-        NSInteger mode = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefEditorTheme];
+        NSInteger mode = [NppUserDefaults() integerForKey:kPrefEditorTheme];
         if (mi) mi.state = (mode == mi.tag) ? NSControlStateValueOn : NSControlStateValueOff;
         return YES;
     }
@@ -7141,7 +7141,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 
     // Tab Wrap checkmark
     if (action == @selector(toggleTabBarWrap:)) {
-        [mi setState:[[NSUserDefaults standardUserDefaults] boolForKey:kPrefTabBarWrap]
+        [mi setState:[NppUserDefaults() boolForKey:kPrefTabBarWrap]
             ? NSControlStateValueOn : NSControlStateValueOff];
         return YES;
     }
@@ -7315,7 +7315,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 }
 
 - (void)_fillFindFieldWithSelectionIfEnabled {
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:kPrefFillFindWithSelection]) return;
+    if (![NppUserDefaults() boolForKey:kPrefFillFindWithSelection]) return;
     EditorView *ed = [self currentEditor];
     NSString *sel = [ed selectedText];
     if (sel.length > 0 && sel.length < 1000) {
@@ -7778,7 +7778,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
         w.backgroundColor = _savedBgColor ?: [NSColor windowBackgroundColor];
         w.movableByWindowBackground = NO;
 
-        [self _applyTabBarVisibility:[[NSUserDefaults standardUserDefaults] boolForKey:kPrefHideTabBar]];  // #183: restore pref, don't force-show
+        [self _applyTabBarVisibility:[NppUserDefaults() boolForKey:kPrefHideTabBar]];  // #183: restore pref, don't force-show
         _statusBar.hidden = NO;
     }
 }
@@ -7800,7 +7800,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     } else {
         [w.toolbar setVisible:_savedToolbarVisible];
         _statusBar.hidden = NO;
-        [self _applyTabBarVisibility:[[NSUserDefaults standardUserDefaults] boolForKey:kPrefHideTabBar]];  // #183: restore pref, don't force-show
+        [self _applyTabBarVisibility:[NppUserDefaults() boolForKey:kPrefHideTabBar]];  // #183: restore pref, don't force-show
         if (isFullScreen) [w toggleFullScreen:nil];
     }
 }
@@ -7991,7 +7991,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 
 - (void)folderTreePanelDidRequestClose:(FolderTreePanel *)panel {
     [self _setPanelVisible:_folderTreePanel title:@"Folder as Workspace" show:NO];
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"FolderTreePanelVisible"];
+    [NppUserDefaults() setBool:NO forKey:@"FolderTreePanelVisible"];
 }
 
 - (void)folderTreePanel:(FolderTreePanel *)panel findInFilesAtPath:(NSString *)path {
@@ -8007,7 +8007,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     // Reorder subviews of _editorSplitView
     [_sidePanelHost removeFromSuperview];
     [_hSplitView removeFromSuperview];
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefDockPanelsOnLeft]) {
+    if ([NppUserDefaults() boolForKey:kPrefDockPanelsOnLeft]) {
         [_editorSplitView addSubview:_sidePanelHost];
         [_editorSplitView addSubview:_hSplitView];
     } else {
@@ -8146,7 +8146,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     EditorView *ed = [self currentEditor];
     if (!ed) return;
     BOOL newState = !ed.wordWrapEnabled;
-    [[NSUserDefaults standardUserDefaults] setBool:newState forKey:kPrefWordWrap];
+    [NppUserDefaults() setBool:newState forKey:kPrefWordWrap];
     [self _propagateWordWrap:newState];
     [[NSNotificationCenter defaultCenter]
         postNotificationName:@"NPPWordWrapSessionChanged" object:self];
@@ -8168,7 +8168,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 // so we don't double-apply / re-broadcast.
 - (void)_wordWrapSessionChanged:(NSNotification *)note {
     if (note.object == self) return;
-    BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefWordWrap];
+    BOOL enabled = [NppUserDefaults() boolForKey:kPrefWordWrap];
     [self _propagateWordWrap:enabled];
     [self _refreshToolbarStates];
 }
@@ -8216,7 +8216,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     if (!ed) return;
     [ed.scintillaView message:SCI_ZOOMIN];
     NSInteger zoom = [ed.scintillaView message:SCI_GETZOOM];
-    [[NSUserDefaults standardUserDefaults] setInteger:zoom forKey:kPrefZoomLevel];
+    [NppUserDefaults() setInteger:zoom forKey:kPrefZoomLevel];
     [self _propagateEditorZoom:zoom];
     [self updateStatusBar];
 }
@@ -8228,7 +8228,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     if (!ed) return;
     [ed.scintillaView message:SCI_ZOOMOUT];
     NSInteger zoom = [ed.scintillaView message:SCI_GETZOOM];
-    [[NSUserDefaults standardUserDefaults] setInteger:zoom forKey:kPrefZoomLevel];
+    [NppUserDefaults() setInteger:zoom forKey:kPrefZoomLevel];
     [self _propagateEditorZoom:zoom];
     [self updateStatusBar];
 }
@@ -8239,7 +8239,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     EditorView *ed = [self focusedEditor];
     if (!ed) return;
     [ed.scintillaView message:SCI_SETZOOM wParam:0];
-    [[NSUserDefaults standardUserDefaults] setInteger:0 forKey:kPrefZoomLevel];
+    [NppUserDefaults() setInteger:0 forKey:kPrefZoomLevel];
     [self _propagateEditorZoom:0];
     [self updateStatusBar];
 }
@@ -8288,7 +8288,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 
 - (void)toggleIndentGuides:(id)sender {
     _showIndentGuides = !_showIndentGuides;
-    [[NSUserDefaults standardUserDefaults] setBool:_showIndentGuides forKey:kPrefShowIndentGuides];
+    [NppUserDefaults() setBool:_showIndentGuides forKey:kPrefShowIndentGuides];
     // Apply to every open editor (all panes / windows) — applyPreferencesFromDefaults
     // re-reads kPrefShowIndentGuides and updates Scintilla.
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NPPPreferencesChanged" object:nil];
@@ -8297,7 +8297,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
 
 - (void)toggleLineNumbers:(id)sender {
     _showLineNumbers = !_showLineNumbers;
-    [[NSUserDefaults standardUserDefaults] setBool:_showLineNumbers forKey:kPrefShowLineNumbers];
+    [NppUserDefaults() setBool:_showLineNumbers forKey:kPrefShowLineNumbers];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NPPPreferencesChanged" object:nil];
 }
 
@@ -8803,7 +8803,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
         if (![_editorSplitView isSubviewCollapsed:_sidePanelHost]) {
             CGFloat width = NSWidth(_sidePanelHost.frame);
             if (width >= 150) {
-                [[NSUserDefaults standardUserDefaults] setDouble:width forKey:kPrefSidePanelWidth];
+                [NppUserDefaults() setDouble:width forKey:kPrefSidePanelWidth];
             }
         }
     }
@@ -9033,7 +9033,7 @@ static NSArray<NSDictionary *> *convertRecordedToXmlFormat(NSArray<NSDictionary 
     EditorView *ed = note.object;
     if (ed == [self currentEditor]) {
         NSInteger zoom = ed.zoomLevel;
-        [[NSUserDefaults standardUserDefaults] setInteger:zoom forKey:kPrefZoomLevel];
+        [NppUserDefaults() setInteger:zoom forKey:kPrefZoomLevel];
         [self updateStatusBar];
     }
 }
@@ -9526,14 +9526,14 @@ typedef NS_ENUM(NSInteger, NppBatchCloseDecision) {
     if (!sel) return;
     NSString *encoded = [sel stringByAddingPercentEncodingWithAllowedCharacters:
                          [NSCharacterSet URLQueryAllowedCharacterSet]];
-    NSString *baseURL = [[NSUserDefaults standardUserDefaults] stringForKey:@"kPrefSearchEngineURL"]
+    NSString *baseURL = [NppUserDefaults() stringForKey:@"kPrefSearchEngineURL"]
                         ?: @"https://www.google.com/search?q=";
     NSURL *url = [NSURL URLWithString:[baseURL stringByAppendingString:encoded]];
     if (url) [[NSWorkspace sharedWorkspace] openURL:url];
 }
 
 - (void)changeSearchEngine:(id)sender {
-    NSString *current = [[NSUserDefaults standardUserDefaults] stringForKey:@"kPrefSearchEngineURL"]
+    NSString *current = [NppUserDefaults() stringForKey:@"kPrefSearchEngineURL"]
                         ?: @"https://www.google.com/search?q=";
     NSAlert *alert = [[NSAlert alloc] init];
     alert.messageText     = [[NppLocalizer shared] translate:@"Change Search Engine"];
@@ -9548,7 +9548,7 @@ typedef NS_ENUM(NSInteger, NppBatchCloseDecision) {
     if ([alert runModal] == NSAlertFirstButtonReturn) {
         NSString *url = [tf stringValue];
         if (url.length > 0)
-            [[NSUserDefaults standardUserDefaults] setObject:url forKey:@"kPrefSearchEngineURL"];
+            [NppUserDefaults() setObject:url forKey:@"kPrefSearchEngineURL"];
     }
 }
 
@@ -10696,7 +10696,7 @@ typedef NS_ENUM(NSInteger, NppBatchCloseDecision) {
         @"into subfolders, or -openFoldersAsWorkspace to open it as a "
         @"workspace instead.\n\n"
         @"Note (macOS): most flags above work as documented. Not yet "
-        @"implemented: -L, -settingsDir, and the Ghost-typing flags "
+        @"implemented: -L and the Ghost-typing flags "
         @"(-qn / -qt / -qf / -qSpeed). The -fullReadOnly and "
         @"-fullReadOnlySavingForbidden flags currently behave like -ro.\n\n"
         @"To use the 'npp' command shown above, run "
@@ -11061,7 +11061,7 @@ static BOOL _writeCLIScript(NSString *script, NSString *path, NSError **outErr) 
 
 - (void)_prefsChanged:(NSNotification *)n {
     // Status bar visibility
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL showStatus = [ud boolForKey:kPrefShowStatusBar];
     _statusBar.hidden = !showStatus;
 
@@ -11090,7 +11090,7 @@ static BOOL _writeCLIScript(NSString *script, NSString *path, NSError **outErr) 
 
 - (void)_toolbarVisibilityChanged:(NSNotification *)note {
     // Sync window toolbar visibility when toggled from preferences.
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL targetVisible = [ud boolForKey:kPrefToolbarVisible];
     if ([self isToolbarShown] != targetVisible) [self setToolbarShown:targetVisible];
 }
@@ -11355,7 +11355,7 @@ static int64_t _sysctlInt(const char *name) {
         [[NSProcessInfo processInfo].environment objectForKey:@"APP_SANDBOX_CONTAINER_ID"] ? @"ON" : @"OFF"];
 
     // ── User Settings ────────────────────────────────────────────────────
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     [info appendString:@"\n── Settings ──\n"];
     [info appendFormat:@"Periodic Backup: %@\n", [ud boolForKey:@"kPrefAutoBackup"] ? @"ON" : @"OFF"];
     [info appendFormat:@"Auto-Indent: %@\n", [ud boolForKey:@"kPrefAutoIndent"] ? @"ON" : @"OFF"];
@@ -11670,7 +11670,7 @@ static int64_t _sysctlInt(const char *name) {
 }
 
 - (BOOL)sessionPersistenceEnabled {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if (![ud boolForKey:kPrefRememberSession]) return NO;
     AppDelegate *appDel = (AppDelegate *)NSApp.delegate;
     if ([appDel isKindOfClass:[AppDelegate class]] && appDel.cliParams.noSession) return NO;
@@ -11684,7 +11684,7 @@ static int64_t _sysctlInt(const char *name) {
     NSString *name;
     if (!ed) {
         name = @"NP++";
-    } else if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefShowFullPathInTitle] && ed.filePath) {
+    } else if ([NppUserDefaults() boolForKey:kPrefShowFullPathInTitle] && ed.filePath) {
         name = ed.filePath;
     } else {
         name = ed.displayName;
@@ -11900,13 +11900,13 @@ static NSString *languageDisplayName(NSString *langCode) {
 }
 
 - (void)saveWindowFrame {
-    [[NSUserDefaults standardUserDefaults]
+    [NppUserDefaults()
         setObject:NSStringFromRect(self.window.frame) forKey:kWindowFrameKey];
-    [[NSUserDefaults standardUserDefaults] setBool:[self isToolbarShown] forKey:kPrefToolbarVisible];
+    [NppUserDefaults() setBool:[self isToolbarShown] forKey:kPrefToolbarVisible];
 }
 
 - (void)restoreWindowFrame {
-    NSString *s = [[NSUserDefaults standardUserDefaults] stringForKey:kWindowFrameKey];
+    NSString *s = [NppUserDefaults() stringForKey:kWindowFrameKey];
     if (s) [self.window setFrame:NSRectFromString(s) display:NO];
 }
 

@@ -1,4 +1,5 @@
 #import "NppLocalizer.h"
+#import "NppPaths.h"
 #import <objc/runtime.h>
 
 NSNotificationName const NPPLocalizationChanged = @"NPPLocalizationChanged";
@@ -99,11 +100,11 @@ static NSString *normalizeForLookup(NSString *s) {
 // ---------------------------------------------------------------------------
 
 - (void)autoLoad {
-    NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:kPrefLanguage];
+    NSString *saved = [NppUserDefaults() stringForKey:kPrefLanguage];
     // Normalize legacy value from english_customizable to english
     if ([saved isEqualToString:@"english_customizable"]) {
         saved = @"english";
-        [[NSUserDefaults standardUserDefaults] setObject:saved forKey:kPrefLanguage];
+        [NppUserDefaults() setObject:saved forKey:kPrefLanguage];
     }
     if (saved.length > 0 && ![saved isEqualToString:@"english"]) {
         [self loadLanguageNamed:saved];
@@ -121,7 +122,7 @@ static NSString *normalizeForLookup(NSString *s) {
         self.currentLanguageName = @"English";
         self.currentLanguageFile = @"english";
         self.isRTL               = NO;
-        [[NSUserDefaults standardUserDefaults] setObject:@"english" forKey:kPrefLanguage];
+        [NppUserDefaults() setObject:@"english" forKey:kPrefLanguage];
         [self applyToMainMenu];
         [[NSNotificationCenter defaultCenter] postNotificationName:NPPLocalizationChanged object:self];
         return YES;
@@ -219,7 +220,7 @@ static NSString *normalizeForLookup(NSString *s) {
     self.currentLanguageFile = stem;
     self.isRTL               = rtl;
 
-    [[NSUserDefaults standardUserDefaults] setObject:stem forKey:kPrefLanguage];
+    [NppUserDefaults() setObject:stem forKey:kPrefLanguage];
 
     [self applyToMainMenu];
     [[NSNotificationCenter defaultCenter] postNotificationName:NPPLocalizationChanged object:self];

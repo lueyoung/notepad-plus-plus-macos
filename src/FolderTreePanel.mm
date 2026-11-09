@@ -1,4 +1,5 @@
 #import "FolderTreePanel.h"
+#import "NppPaths.h"
 #import "NppLocalizer.h"
 #import "StyleConfiguratorWindowController.h"
 #import <objc/runtime.h>
@@ -171,7 +172,7 @@ static NSImage *_FTLoadToolbarIcon(NSString *iconName, CGFloat size) {
     self = [super initWithFrame:frame];
     if (self) {
         _roots = [NSMutableArray array];
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_FolderTree"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_FolderTree"]; _panelFontSize = z >= 8 ? z : 11; }
         [self _buildUI];
         [self _applyTheme];
         [self _restoreRoots];
@@ -369,11 +370,11 @@ static _FTPanelButton *_panelBtn(NSString *iconName, NSString *tip, id target, S
     NSMutableArray<NSString *> *paths = [NSMutableArray array];
     for (_FTItem *root in _roots)
         [paths addObject:root.url.path];
-    [[NSUserDefaults standardUserDefaults] setObject:paths forKey:kDefaultsRootsKey];
+    [NppUserDefaults() setObject:paths forKey:kDefaultsRootsKey];
 }
 
 - (void)_restoreRoots {
-    NSArray<NSString *> *paths = [[NSUserDefaults standardUserDefaults]
+    NSArray<NSString *> *paths = [NppUserDefaults()
                                   arrayForKey:kDefaultsRootsKey];
     for (NSString *path in paths) {
         BOOL isDir = NO;
@@ -1028,7 +1029,7 @@ static _FTPanelButton *_panelBtn(NSString *iconName, NSString *tip, id target, S
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_FolderTree"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_FolderTree"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); [_outlineView reloadData]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  [_outlineView reloadData]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; [_outlineView reloadData]; [self _saveZoom]; }

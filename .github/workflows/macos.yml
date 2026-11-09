@@ -8,28 +8,43 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-14
+    name: Build and test (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure app
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Configure app and tests
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNPP_BUILD_TESTS=ON
 
-      - name: Build app
-        run: cmake --build build --config Release --parallel
-
-      - name: Configure tests
-        run: cmake -S . -B build-tests -DNPP_BUILD_TESTS=ON
-
-      - name: Build XCTest bundle
-        run: cmake --build build-tests --target NppEncodingTests --parallel
+      - name: Build app and XCTest bundle
+        run: cmake --build build --target NotepadPlusPlusMac NppEncodingTests --parallel 3
 
       - name: Run XCTest
-        run: xcrun xctest build-tests/NppEncodingTests.xctest
+        env:
+          CFFIXED_USER_HOME: ${{ runner.temp }}/np-tests-${{ matrix.arch }}
+        run: |
+          mkdir -p "$CFFIXED_USER_HOME"
+          xcrun xctest build/NppEncodingTests.xctest
+
+      - name: Verify and package Universal app
+        run: |
+          lipo -archs 'build/NP++.app/Contents/MacOS/NP++'
+          codesign --verify --deep --strict 'build/NP++.app'
+          ditto -c -k --sequesterRsrc --keepParent 'build/NP++.app' 'build/NP++-macOS-universal.zip'
 
       - name: Upload app bundle
         uses: actions/upload-artifact@v4
         with:
-          name: NP++-macOS
-          path: build/NP++.app
+          name: NP++-macOS-universal-${{ matrix.arch }}-tested
+          path: build/NP++-macOS-universal.zip
+          if-no-files-found: error

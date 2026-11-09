@@ -1,4 +1,5 @@
 #import "ClipboardHistoryPanel.h"
+#import "NppPaths.h"
 #import "StyleConfiguratorWindowController.h"
 #import "NppThemeManager.h"
 
@@ -19,7 +20,7 @@ static const NSUInteger kMaxHistory = 30;
     self = [super initWithFrame:frameRect];
     if (self) {
         _history = [NSMutableArray array];
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_ClipboardHistory"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_ClipboardHistory"]; _panelFontSize = z >= 8 ? z : 11; }
         _lastChangeCount = [NSPasteboard generalPasteboard].changeCount;
         [self _buildLayout];
         [self _applyTheme];
@@ -185,7 +186,7 @@ static const NSUInteger kMaxHistory = 30;
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_ClipboardHistory"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_ClipboardHistory"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); _tableView.rowHeight = _panelFontSize + 8; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  _tableView.rowHeight = _panelFontSize + 8; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; _tableView.rowHeight = 19; [_tableView reloadData]; [self _saveZoom]; }

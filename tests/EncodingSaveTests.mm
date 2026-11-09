@@ -6,6 +6,8 @@
 #import "EditorView.h"
 #import "NppApplication.h"
 #import "Scintilla.h"
+#import "NppPaths.h"
+#import "PreferencesWindowController.h"
 
 @interface EncodingSaveTests : XCTestCase
 @property (nonatomic, copy) NSString *tempDir;
@@ -16,6 +18,7 @@
 
 - (void)setUp {
     [super setUp];
+    [PreferencesWindowController registerApplicationDefaults];
     // EditorView reads app-level state (appearance, theme) that needs NSApp to exist.
     [NppApplication sharedApplication];
     NSString *name = [NSString stringWithFormat:@"npp-tests-%@", [[NSUUID UUID] UUIDString]];
@@ -76,6 +79,93 @@
     NSMutableData *input = [NSMutableData dataWithBytes:"\xEF\xBB\xBF" length:3];
     [input appendData:[@"héllo\n" dataUsingEncoding:NSUTF8StringEncoding]];
     XCTAssertEqualObjects([self roundTrip:input name:@"utf8-bom.txt"], input);
+}
+
+- (void)testLoadedLineEndingModesPreserveBytes {
+    NSArray<NSString *> *texts = @[@"中文\r\nsecond\r\n", @"中文\nsecond\n", @"中文\rsecond\r"];
+    NSArray<NSString *> *names = @[@"CRLF", @"LF", @"CR"];
+    for (NSUInteger i = 0; i < texts.count; ++i) {
+        NSData *input = [texts[i] dataUsingEncoding:NSUTF8StringEncoding];
+        EditorView *ed = [self openBytes:input named:[names[i] stringByAppendingString:@".txt"]];
+        XCTAssertEqualObjects(ed.eolName, names[i]);
+        XCTAssertFalse(ed.isModified);
+        NSString *target = [self pathNamed:[names[i] stringByAppendingString:@"-saved.txt"]];
+        XCTAssertTrue([ed saveToPath:target error:nil]);
+        XCTAssertEqualObjects([NSData dataWithContentsOfFile:target], input);
+    }
+}
+
+- (void)testCRLFInsertionSurvivesThemeChangesAndUndo {
+    NSData *input = [@"中文\r\n" dataUsingEncoding:NSUTF8StringEncoding];
+    EditorView *ed = [self openBytes:input named:@"theme-eol.txt"];
+    [ed applyDefaultTheme];
+    [ed applyThemeColors];
+    XCTAssertEqualObjects(ed.eolName, @"CRLF");
+    [ed.scintillaView message:SCI_GOTOPOS wParam:input.length];
+    [ed.scintillaView message:SCI_BEGINUNDOACTION];
+    [ed.scintillaView message:SCI_NEWLINE];
+    [ed.scintillaView message:SCI_ADDTEXT wParam:4 lParam:(sptr_t)"next"];
+    [ed.scintillaView message:SCI_ENDUNDOACTION];
+    XCTAssertTrue([ed saveError:nil]);
+    XCTAssertEqualObjects([NSData dataWithContentsOfFile:ed.filePath],
+                          [@"中文\r\n\r\nnext" dataUsingEncoding:NSUTF8StringEncoding]);
+    [ed.scintillaView message:SCI_UNDO];
+    XCTAssertTrue(ed.isModified);
+    XCTAssertTrue([ed saveError:nil]);
+    XCTAssertEqualObjects([NSData dataWithContentsOfFile:ed.filePath], input);
+}
+
+- (void)testNewAndSingleLineFilesUsePreferredEOL {
+    id previous = [NppUserDefaults() objectForKey:kPrefEOLType];
+    @try {
+        NSArray *samples = @[@{@"preference": @0, @"name": @"CRLF"},
+                             @{@"preference": @1, @"name": @"LF"},
+                             @{@"preference": @2, @"name": @"CR"}];
+        for (NSDictionary *sample in samples) {
+            [NppUserDefaults() setObject:sample[@"preference"] forKey:kPrefEOLType];
+            EditorView *fresh = [[EditorView alloc] initWithFrame:NSMakeRect(0, 0, 400, 300)];
+            XCTAssertEqualObjects(fresh.eolName, sample[@"name"]);
+            EditorView *ed = [self openBytes:[@"single line" dataUsingEncoding:NSUTF8StringEncoding]
+                                     named:@"single.txt"];
+            XCTAssertEqualObjects(ed.eolName, sample[@"name"]);
+        }
+    } @finally {
+        if (previous) [NppUserDefaults() setObject:previous forKey:kPrefEOLType];
+        else [NppUserDefaults() removeObjectForKey:kPrefEOLType];
+    }
+}
+
+- (void)testMixedLineEndingsAreNotNormalized {
+    NSData *input = [@"one\r\ntwo\nthree\rfour" dataUsingEncoding:NSUTF8StringEncoding];
+    EditorView *ed = [self openBytes:input named:@"mixed.txt"];
+    XCTAssertEqualObjects(ed.eolName, @"CRLF");
+    [ed applyDefaultTheme];
+    XCTAssertTrue([ed saveError:nil]);
+    XCTAssertEqualObjects([NSData dataWithContentsOfFile:ed.filePath], input);
+}
+
+- (void)testUTF16ChineseCRLFReloadAndSave {
+    NSMutableData *input = [NSMutableData dataWithBytes:"\xFF\xFE" length:2];
+    [input appendData:[self utf16LEBytes:@"中文\r\n下一行\r\n"]];
+    EditorView *ed = [self openBytes:input named:@"chinese-utf16.txt"];
+    XCTAssertEqualObjects(ed.eolName, @"CRLF");
+    XCTAssertTrue([ed reloadWithEncoding:NSUTF16LittleEndianStringEncoding hasBOM:YES error:nil]);
+    [ed applyDefaultTheme];
+    XCTAssertEqualObjects(ed.eolName, @"CRLF");
+    XCTAssertTrue([ed saveError:nil]);
+    XCTAssertEqualObjects([NSData dataWithContentsOfFile:ed.filePath], input);
+}
+
+- (void)testSectionLoadAndContentCopyKeepCRLF {
+    NSData *input = [@"first\r\nsecond\r\n" dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *path = [self pathNamed:@"section.txt"];
+    XCTAssertTrue([input writeToFile:path atomically:NO]);
+    EditorView *ed = [[EditorView alloc] initWithFrame:NSMakeRect(0, 0, 400, 300)];
+    XCTAssertTrue([ed loadSectionOfFileAtPath:path offset:0 length:input.length error:nil]);
+    XCTAssertEqualObjects(ed.eolName, @"CRLF");
+    EditorView *copy = [[EditorView alloc] initWithFrame:NSMakeRect(0, 0, 400, 300)];
+    [copy loadContentFromEditor:ed];
+    XCTAssertEqualObjects(copy.eolName, @"CRLF");
 }
 
 - (void)testUTF8WithoutBOMRoundTripsBytes {

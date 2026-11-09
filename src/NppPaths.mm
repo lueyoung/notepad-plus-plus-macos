@@ -2,6 +2,98 @@
 //  See NppPaths.h.
 
 #import "NppPaths.h"
+#import <CommonCrypto/CommonDigest.h>
+#include <atomic>
+
+static NSString *sSettingsDirectory;
+static NSString *sPreferencesSuite;
+static NSUserDefaults *sProfileDefaults;
+static id sPreferencesObserver;
+static std::atomic_bool sConfigurationUsed{false};
+
+BOOL NppSaveProfilePreferences(NSError **error) {
+    if (!sProfileDefaults) return YES;
+    @synchronized (sProfileDefaults) {
+        NSDictionary *values = [sProfileDefaults persistentDomainForName:sPreferencesSuite] ?: @{};
+        NSData *data = [NSPropertyListSerialization dataWithPropertyList:values
+                             format:NSPropertyListBinaryFormat_v1_0 options:0 error:error];
+        return data && [data writeToFile:[sSettingsDirectory stringByAppendingPathComponent:@"preferences.plist"]
+                                options:NSDataWritingAtomic error:error];
+    }
+}
+
+BOOL NppConfigureSettingsDirectory(NSString *path, NSError **error) {
+    if (path.length == 0) {
+        if (error) *error = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileWriteInvalidFileNameError
+            userInfo:@{NSLocalizedDescriptionKey: @"Set a non-empty -settingsDir=path."}];
+        return NO;
+    }
+    if (sConfigurationUsed.load(std::memory_order_relaxed) || sSettingsDirectory) {
+        if (error) *error = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileWriteUnknownError
+            userInfo:@{NSLocalizedDescriptionKey: @"Select the settings directory before initializing app preferences."}];
+        return NO;
+    }
+    NSString *resolved = path.stringByExpandingTildeInPath;
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (!resolved.isAbsolutePath)
+        resolved = [fm.currentDirectoryPath stringByAppendingPathComponent:resolved];
+    resolved = resolved.stringByStandardizingPath;
+    if (![fm createDirectoryAtPath:resolved withIntermediateDirectories:YES attributes:nil error:error])
+        return NO;
+    resolved = resolved.stringByResolvingSymlinksInPath;
+    if (![fm isWritableFileAtPath:resolved]) {
+        if (error) *error = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileWriteNoPermissionError
+            userInfo:@{NSLocalizedDescriptionKey: @"The settings directory is not writable."}];
+        return NO;
+    }
+
+    NSString *preferencesPath = [resolved stringByAppendingPathComponent:@"preferences.plist"];
+    NSDictionary *stored = @{};
+    if ([fm fileExistsAtPath:preferencesPath]) {
+        NSData *data = [NSData dataWithContentsOfFile:preferencesPath options:0 error:error];
+        if (!data) return NO;
+        id plist = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable
+                                                             format:nil error:error];
+        if (![plist isKindOfClass:[NSDictionary class]]) {
+            if (error && !*error) *error = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileReadCorruptFileError
+                userInfo:@{NSLocalizedDescriptionKey: @"The profile's preferences.plist must contain a dictionary."}];
+            return NO;
+        }
+        stored = plist;
+    }
+
+    // A suite isolates all app-owned defaults, including preferences not in config.xml.
+    // The plist is authoritative so moving or recreating a profile cannot resurrect
+    // stale preferences from the system's defaults cache.
+    NSData *pathData = [resolved dataUsingEncoding:NSUTF8StringEncoding];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(pathData.bytes, (CC_LONG)pathData.length, digest);
+    NSMutableString *suite = [NSMutableString stringWithString:@"org.npp.mac.profile."];
+    for (NSUInteger i = 0; i < sizeof(digest); ++i) [suite appendFormat:@"%02x", digest[i]];
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:suite];
+    if (!defaults) {
+        if (error) *error = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileWriteUnknownError
+            userInfo:@{NSLocalizedDescriptionKey: @"Could not initialize the profile's preferences."}];
+        return NO;
+    }
+    [defaults setPersistentDomain:stored forName:suite];
+    sSettingsDirectory = resolved;
+    sPreferencesSuite = suite;
+    sProfileDefaults = defaults;
+    sPreferencesObserver = [[NSNotificationCenter defaultCenter]
+        addObserverForName:NSUserDefaultsDidChangeNotification object:defaults queue:nil
+        usingBlock:^(NSNotification *notification) {
+            NSError *saveError = nil;
+            if (!NppSaveProfilePreferences(&saveError))
+                NSLog(@"[Config] Could not save profile preferences: %@", saveError);
+        }];
+    return YES;
+}
+
+NSUserDefaults *NppUserDefaults(void) {
+    sConfigurationUsed.store(true, std::memory_order_relaxed);
+    return sProfileDefaults ?: [NSUserDefaults standardUserDefaults];
+}
 
 NSString *NppLegacyConfigDir(void) {
     return [NSHomeDirectory() stringByAppendingPathComponent:@".npp"];
@@ -90,8 +182,9 @@ NSString *NppConfigDir(void) {
     static NSString *dir;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        dir = NppComputeConfigDir();
-        NppMigrateLegacyIfNeeded(dir);
+        sConfigurationUsed.store(true, std::memory_order_relaxed);
+        dir = sSettingsDirectory ?: NppComputeConfigDir();
+        if (!sSettingsDirectory) NppMigrateLegacyIfNeeded(dir);
         [[NSFileManager defaultManager] createDirectoryAtPath:dir
                                   withIntermediateDirectories:YES
                                                    attributes:nil

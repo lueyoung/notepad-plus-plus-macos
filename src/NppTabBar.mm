@@ -158,7 +158,7 @@ static const CGFloat kPinSize = 11.0; // pin icon drawn at ~80% of original ~14p
 
 // ── Tab width helpers (wrap-mode auto-fill) ───────────────────────────────────
 static CGFloat effectiveTabMaxWidth(void) {
-    NSInteger maxW = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefTabMaxLabelWidth];
+    NSInteger maxW = [NppUserDefaults() integerForKey:kPrefTabMaxLabelWidth];
     if (maxW < (NSInteger)kTabMinWidth) maxW = (NSInteger)kTabMinWidth;
     return (CGFloat)maxW;
 }
@@ -166,7 +166,7 @@ static CGFloat effectiveTabMaxWidth(void) {
 static CGFloat tabChromeWidth(_NppTabItem *item) {
     CGFloat closeGap = 4 + kCloseSize + 4;
     CGFloat pinGap   = item.isPinned ? (kPinSize + 2) : 0;
-    BOOL showClose = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefTabCloseButton];
+    BOOL showClose = [NppUserDefaults() boolForKey:kPrefTabCloseButton];
     if (!showClose) closeGap = 0;
     return 8 + kIconSize + 4 + pinGap + closeGap + 8;
 }
@@ -191,9 +191,9 @@ static CGFloat tabShrinkFloor(_NppTabItem *item) {
     CGFloat tw       = [_title sizeWithAttributes:attrs].width;
     CGFloat closeGap = 4 + kCloseSize + 4;
     CGFloat pinGap   = _isPinned ? (kPinSize + 2) : 0; // pin icon to left of close
-    NSInteger maxW = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefTabMaxLabelWidth];
+    NSInteger maxW = [NppUserDefaults() integerForKey:kPrefTabMaxLabelWidth];
     if (maxW < 80) maxW = 80;
-    BOOL showClose = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefTabCloseButton];
+    BOOL showClose = [NppUserDefaults() boolForKey:kPrefTabCloseButton];
     if (!showClose) closeGap = 0;
     return MAX(kTabMinWidth, MIN((CGFloat)maxW, 8 + kIconSize + 4 + tw + pinGap + closeGap + 8));
 }
@@ -310,7 +310,7 @@ static CGFloat tabShrinkFloor(_NppTabItem *item) {
         withAttributes:attrs];
 
     // ── Close button (rightmost, hidden if pref is off) ─────────────────────
-    BOOL showClose = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefTabCloseButton];
+    BOOL showClose = [NppUserDefaults() boolForKey:kPrefTabCloseButton];
     CGFloat cx = w - kCloseSize - 6;
     CGFloat cy = (h - kCloseSize) / 2.0;
     if (showClose && (_isSelected || _hovered)) {
@@ -773,7 +773,7 @@ static CGFloat tabShrinkFloor(_NppTabItem *item) {
 - (void)tabItemMouseDown:(_NppTabItem *)item event:(NSEvent *)event {
     NSPoint p  = [item convertPoint:event.locationInWindow fromView:nil];
     CGFloat cx = item.bounds.size.width - kCloseSize - 6;
-    BOOL closeVisible = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefTabCloseButton];
+    BOOL closeVisible = [NppUserDefaults() boolForKey:kPrefTabCloseButton];
     // Issue #84 hardening #4 — restore the (isSelected || hovered) precondition.
     // Without it, an unhovered/unselected tab can be closed by a click that lands
     // in the close-button rect (e.g. blind clicks on a tab the user hasn't aimed at).
@@ -781,7 +781,7 @@ static CGFloat tabShrinkFloor(_NppTabItem *item) {
                      && p.x >= cx && p.x <= cx + kCloseSize;
     // Double-click anywhere on tab to close (if enabled) — independent of hover.
     if (!overClose && event.clickCount == 2 &&
-        [[NSUserDefaults standardUserDefaults] boolForKey:kPrefDoubleClickTabClose]) {
+        [NppUserDefaults() boolForKey:kPrefDoubleClickTabClose]) {
         overClose = YES;
     }
 

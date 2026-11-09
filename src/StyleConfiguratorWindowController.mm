@@ -324,7 +324,7 @@ static NSString *_userThemesDir(void) {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 - (void)loadFromDefaults {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSString *savedTheme = [ud stringForKey:kNSDefaultsThemeKey] ?: kDefaultThemeName;
     _activeThemeName = savedTheme;
 
@@ -428,7 +428,7 @@ static NSString *_userThemesDir(void) {
         }
     }
 
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     [ud setObject:overrides forKey:kNSDefaultsStyleKey];
     [ud setObject:themeName forKey:kNSDefaultsThemeKey];
 
@@ -994,7 +994,7 @@ static NSString *_userThemesDir(void) {
         _forceBoldCheck, _forceItalicCheck, _forceUnderlineCheck ];
     for (NSButton *b in overrideChecks) b.hidden = !isGlobalOverride;
     if (isGlobalOverride) {
-        NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+        NSUserDefaults *d = NppUserDefaults();
         _forceFgCheck.state        = [d boolForKey:kPrefGlobalOverrideEnableFg]
                                      ? NSControlStateValueOn : NSControlStateValueOff;
         _forceBgCheck.state        = [d boolForKey:kPrefGlobalOverrideEnableBg]
@@ -1018,7 +1018,7 @@ static NSString *_userThemesDir(void) {
 // path that fg/bg/font edits already use).
 - (void)_writeOverridePref:(NSString *)key fromCheckbox:(NSButton *)cb {
     if (_suppressActions) return;
-    [[NSUserDefaults standardUserDefaults]
+    [NppUserDefaults()
         setBool:(cb.state == NSControlStateValueOn) forKey:key];
     [[NPPStyleStore sharedStore] previewLexers:_workingLexers];
 }
@@ -1169,7 +1169,7 @@ static NSString *_userThemesDir(void) {
         // Roll the Global override flags back to their snapshot before
         // re-pushing the lexer set, so the resulting re-skin matches the
         // state the user saw on open.
-        NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+        NSUserDefaults *d = NppUserDefaults();
         [d setBool:_backupOverrideFg        forKey:kPrefGlobalOverrideEnableFg];
         [d setBool:_backupOverrideBg        forKey:kPrefGlobalOverrideEnableBg];
         [d setBool:_backupOverrideFont      forKey:kPrefGlobalOverrideEnableFont];
@@ -1258,7 +1258,7 @@ static NSString *_userThemesDir(void) {
     _cancelTheme  = store.activeThemeName ?: kDefaultThemeName;
 
     // Snapshot Global override checkbox prefs — restored on Cancel.
-    NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *d = NppUserDefaults();
     _backupOverrideFg        = [d boolForKey:kPrefGlobalOverrideEnableFg];
     _backupOverrideBg        = [d boolForKey:kPrefGlobalOverrideEnableBg];
     _backupOverrideFont      = [d boolForKey:kPrefGlobalOverrideEnableFont];
@@ -1271,13 +1271,13 @@ static NSString *_userThemesDir(void) {
     [self _populateThemePopup];
 
     // Figure out active theme
-    NSString *activeName = [[NSUserDefaults standardUserDefaults] stringForKey:kNSDefaultsThemeKey]
+    NSString *activeName = [NppUserDefaults() stringForKey:kNSDefaultsThemeKey]
                             ?: kDefaultThemeName;
     // Load fresh working copy for active theme
     [self _resetWorkingCopyForTheme:activeName];
 
     // Apply any user overrides on top
-    NSDictionary *saved = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kNSDefaultsStyleKey];
+    NSDictionary *saved = [NppUserDefaults() dictionaryForKey:kNSDefaultsStyleKey];
     if (saved.count) {
         // Build lookup for overrides application
         NSMutableDictionary<NSString *, NPPLexer *> *lookup = [NSMutableDictionary new];

@@ -1,4 +1,5 @@
 #import "ContentToolbar.h"
+#import "NppPaths.h"
 
 extern NSString *const kPrefToolbarIconScale;
 
@@ -8,7 +9,7 @@ static const CGFloat kOverflowButtonWidth  = 22.0;
 // The row's button size follows the toolbar icon-scale preference (same formula as
 // MainWindowController's metrics), so popover buttons match the row exactly.
 static CGFloat NppOverflowButtonSize(void) {
-    double s = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefToolbarIconScale];
+    double s = [NppUserDefaults() doubleForKey:kPrefToolbarIconScale];
     if (s < 0.50 - 1e-6 || s > 1.50 + 1e-6) s = 1.0;
     return round(28.0 * s);
 }

@@ -7,7 +7,7 @@
 //  Preferences ▸ Toolbar (Classic) or Preferences ▸ Tahoe (Liquid Glass). This class
 //  owns ONLY the data + file I/O; it knows nothing about AppKit or the editor UI.
 //
-//  The file is created on first use (see -load). The old Tahoe-only file
+//  The file is created on first use (see +loadModel). The old Tahoe-only file
 //  toolbarButtonsTahoeConf.xml is migrated once and kept as .bak.
 //
 //  Model shape — an ordered NSArray of group dictionaries:
@@ -45,7 +45,7 @@ extern NSString *const NPPToolbarLayoutChanged;
 
 /// Parse the file into the model. If the file is missing, migrates the legacy Tahoe
 /// file when present; otherwise returns nil and the caller materializes defaults.
-+ (nullable NSArray<NSDictionary *> *)load;
++ (nullable NSArray<NSDictionary *> *)loadModel;
 
 /// Serialize the model to the file (with a commented schema header). YES on success.
 + (BOOL)saveModel:(NSArray<NSDictionary *> *)model;

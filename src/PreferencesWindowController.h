@@ -151,6 +151,7 @@ extern NSString *const kPrefStyleFontSize;  // integer stored as NSNumber
 
 /// Modeless preferences window. Call +sharedController to get the singleton.
 @interface PreferencesWindowController : NSWindowController
++ (void)registerApplicationDefaults;
 
 + (instancetype)sharedController;
 

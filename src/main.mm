@@ -2,6 +2,8 @@
 #import "NppApplication.h"
 #import "AppDelegate.h"
 #import "NppCommandLineParams.h"
+#import "NppPaths.h"
+#import "PreferencesWindowController.h"
 
 static void printHelp(const char *progName) {
     fprintf(stdout,
@@ -51,6 +53,14 @@ int main(int argc, const char *argv[]) {
             printHelp(argv[0]);
             return 0;
         }
+
+        NSError *settingsError = nil;
+        if (cliParams.settingsDir != nil &&
+            !NppConfigureSettingsDirectory(cliParams.settingsDir, &settingsError)) {
+            fprintf(stderr, "NP++: %s\n", settingsError.localizedDescription.UTF8String);
+            return 2;
+        }
+        [PreferencesWindowController registerApplicationDefaults];
 
         // -loadingTime: record start time
         NSDate *launchStart = cliParams.showLoadingTime ? [NSDate date] : nil;

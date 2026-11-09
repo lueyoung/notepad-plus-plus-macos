@@ -1,4 +1,5 @@
 #import "CharacterPanel.h"
+#import "NppPaths.h"
 #import "NppLocalizer.h"
 #import "StyleConfiguratorWindowController.h"   // NPPStyleStore
 #import "NppThemeManager.h"
@@ -164,7 +165,7 @@ static NSString *const kColXHex = @"xhex";  // 5  HTML Hexadecimal
 - (instancetype)init {
     self = [super initWithFrame:NSZeroRect];
     if (self) {
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_Character"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_Character"]; _panelFontSize = z >= 8 ? z : 11; }
         [self _buildData];
         [self _buildLayout];
         [self retranslateUI];
@@ -390,7 +391,7 @@ static NSString *const kColXHex = @"xhex";  // 5  HTML Hexadecimal
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_Character"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_Character"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); _tableView.rowHeight = _panelFontSize + 8; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  _tableView.rowHeight = _panelFontSize + 8; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; _tableView.rowHeight = 19; [_tableView reloadData]; [self _saveZoom]; }

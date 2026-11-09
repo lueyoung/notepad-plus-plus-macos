@@ -241,7 +241,7 @@ static NSButton *_flPanelBtn(NSString *iconName, NSString *tip,
     if (self) {
         _rootItems    = [NSMutableArray array];
         _filteredItems = [NSMutableArray array];
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_FunctionList"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_FunctionList"]; _panelFontSize = z >= 8 ? z : 11; }
         _searchText   = @"";
         [self _loadIcons];
         [self _buildLayout];
@@ -967,7 +967,7 @@ static BOOL _isInComment(NSRange range, NSIndexSet *commentRanges) {
 
     // If XML-based parsing is enabled, try the multi-stage XML parser first.
     // Falls back to hardcoded regex if XML not found or patterns are unconvertible.
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefFuncListUseXML]) {
+    if ([NppUserDefaults() boolForKey:kPrefFuncListUseXML]) {
         if ([self _scanTextWithXML:text forLanguage:lang])
             return; // XML parser succeeded
     }
@@ -1393,7 +1393,7 @@ static NSString *_userFuncPatternForLanguage(NSString *lang, NSString * __autore
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_FunctionList"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_FunctionList"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); _outlineView.rowHeight = _panelFontSize + 8; [_outlineView reloadData]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  _outlineView.rowHeight = _panelFontSize + 8; [_outlineView reloadData]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; _outlineView.rowHeight = 19; [_outlineView reloadData]; [self _saveZoom]; }

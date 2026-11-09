@@ -1,4 +1,5 @@
 #import "NppThemeManager.h"
+#import "NppPaths.h"
 
 NSNotificationName const NPPDarkModeChangedNotification = @"NPPDarkModeChangedNotification";
 NSString *const kPrefDarkMode = @"NPPDarkMode";
@@ -70,13 +71,13 @@ static NSDictionary<NSString *, NSString *> *toolbarIconMapping(void) {
     self = [super init];
     if (self) {
         // Load saved preference (default = Auto)
-        NSInteger saved = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefDarkMode];
+        NSInteger saved = [NppUserDefaults() integerForKey:kPrefDarkMode];
         _mode = (NppDarkModeOption)saved;
         [self _recalcIsDark];
         [self _applyAppearance];
 
         // Appearance profile (Auto/Classic/Tahoe). Absent integer key → 0 → Auto.
-        _appearanceStyle = (NppAppearanceStyle)[[NSUserDefaults standardUserDefaults]
+        _appearanceStyle = (NppAppearanceStyle)[NppUserDefaults()
             integerForKey:kPrefAppearanceStyle];
 
         // Observe system appearance changes for Auto mode via distributed notification
@@ -140,7 +141,7 @@ static NSDictionary<NSString *, NSString *> *toolbarIconMapping(void) {
 
 - (void)setMode:(NppDarkModeOption)mode {
     _mode = mode;
-    [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:kPrefDarkMode];
+    [NppUserDefaults() setInteger:mode forKey:kPrefDarkMode];
     [self _recalcIsDark];
     [self _applyAppearance];
     [[NSNotificationCenter defaultCenter]
@@ -165,7 +166,7 @@ static NSDictionary<NSString *, NSString *> *toolbarIconMapping(void) {
 
 - (void)setAppearanceStyle:(NppAppearanceStyle)style {
     _appearanceStyle = style;
-    [[NSUserDefaults standardUserDefaults] setInteger:style forKey:kPrefAppearanceStyle];
+    [NppUserDefaults() setInteger:style forKey:kPrefAppearanceStyle];
     // No notification posted yet: switching the profile requires rebuilding the
     // toolbar (not just re-skinning colors), and that live-rebuild path is wired
     // in a later step. For now the profile is read when the toolbar is built, so

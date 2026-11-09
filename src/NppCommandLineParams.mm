@@ -131,8 +131,9 @@
         if ((val = [self extractValue:arg forKey:@"-udl"])) {
             _udlName = val; i++; continue;
         }
-        if ((val = [self extractValue:arg forKey:@"-settingsDir"])) {
-            _settingsDir = val; i++; continue;
+        if ((val = [self extractValue:arg forKey:@"-settingsDir"]) ||
+            [arg isEqualToString:@"-settingsDir"] || [arg isEqualToString:@"-settingsDir="]) {
+            _settingsDir = val ?: @""; i++; continue;
         }
         if ((val = [self extractValue:arg forKey:@"-titleAdd"])) {
             _titleAdd = val; i++; continue;

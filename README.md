@@ -68,11 +68,35 @@ open build/NP++.app
 
 The app is built as a universal binary (arm64 and x86_64).
 
+## Independent configuration directories
+
+Launch a separate instance with `-settingsDir` to keep its preferences, plugins,
+backups and session separate from the default profile:
+
+```bash
+open -n 'build/NP++.app' --args '-settingsDir=~/Library/Application Support/NP++ Dev'
+```
+
+Relative paths resolve against the launch working directory. Custom profiles keep
+their preferences in `preferences.plist` inside that directory; they do not import
+or migrate the default profile. An empty or unusable path stops startup with an
+error. Omitting the option preserves the existing default directory and migration.
+
+## Line endings
+
+Opening or reloading a file detects its first CRLF, LF or CR line ending and uses
+that format for newly inserted text. Existing bytes, including mixed line endings,
+are preserved until an explicit EOL conversion. Empty files and files without line
+endings use the New Document preference. Themes do not change the document's EOL
+mode.
+
 ## Run the tests
 
 The XCTest suite covers file loading and saving across encodings (UTF-8 with and without
 BOM, UTF-16 LE and BE, Windows-1252, empty files), save state after edits and failed saves,
-and the lossy-encoding warning for saves and conversions.
+and the lossy-encoding warning for saves and conversions. Additional tests cover
+line-ending detection, insertion after theme changes, and independent configuration
+directories (including persistence and legacy migration).
 
 ```bash
 cmake -S . -B build-tests -DNPP_BUILD_TESTS=ON
@@ -80,8 +104,10 @@ cmake --build build-tests --target NppEncodingTests --parallel
 xcrun xctest build-tests/NppEncodingTests.xctest
 ```
 
-Continuous integration runs the same steps on every push to `master` and on pull requests
-(see `.github/workflows/macos.yml`).
+Continuous integration builds and runs the suite on both Apple Silicon and Intel
+on every push to `master` and on pull requests (see `.github/workflows/macos.yml`).
+Each job publishes a Universal app ZIP preserving the bundle's executable bits
+and resource metadata.
 
 ## Project layout
 

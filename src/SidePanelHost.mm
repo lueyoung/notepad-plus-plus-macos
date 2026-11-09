@@ -1,4 +1,5 @@
 #import "SidePanelHost.h"
+#import "NppPaths.h"
 #import "PanelFrame.h"
 #import "FloatingPanelWindow.h"
 
@@ -117,7 +118,7 @@ static CGFloat panelMinHeight(NSSplitView *sv) {
 
     NSString *cls = NSStringFromClass([panel class]);
     NSString *key = [@"NppFloatingPanelPopped_" stringByAppendingString:cls];
-    BOOL shouldPop = [[NSUserDefaults standardUserDefaults] boolForKey:key];
+    BOOL shouldPop = [NppUserDefaults() boolForKey:key];
 
     if (shouldPop) {
         FloatingPanelWindow *w = [[FloatingPanelWindow alloc] initWithPanelFrame:frame];
@@ -223,7 +224,7 @@ static CGFloat panelMinHeight(NSSplitView *sv) {
 
     NSString *cls = NSStringFromClass([panel class]);
     NSString *key = [@"NppFloatingPanelPopped_" stringByAppendingString:cls];
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:key];
+    [NppUserDefaults() setBool:YES forKey:key];
 
     [self _notifyLayoutChanged];
 }
@@ -249,7 +250,7 @@ static CGFloat panelMinHeight(NSSplitView *sv) {
 
     NSString *cls = NSStringFromClass([panel class]);
     NSString *key = [@"NppFloatingPanelPopped_" stringByAppendingString:cls];
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:key];
+    [NppUserDefaults() setBool:NO forKey:key];
 
     [self _notifyLayoutChanged];
 }

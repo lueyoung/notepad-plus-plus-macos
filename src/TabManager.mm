@@ -1,4 +1,5 @@
 #import "TabManager.h"
+#import "NppPaths.h"
 #import "EditorView.h"
 #import "PreferencesWindowController.h"
 
@@ -23,7 +24,7 @@ typedef NS_ENUM(NSInteger, NppOpenChoice) { NppOpenChoiceSection, NppOpenChoiceW
 // Asks how to open a huge file. On "Open Section", returns the byte range to load.
 static NppOpenChoice NppChooseOpenMode(NSString *path, unsigned long long total,
                                        unsigned long long *outOffset, unsigned long long *outLength) {
-    NSInteger sizeMB = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefLargeFileSizeMB];
+    NSInteger sizeMB = [NppUserDefaults() integerForKey:kPrefLargeFileSizeMB];
     (void)sizeMB;   // threshold check happens in the caller
     _NppSectionChooser *chooser = [[_NppSectionChooser alloc] init];
     NSView *box = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 360, 96)];
@@ -149,7 +150,7 @@ static NppOpenChoice NppChooseOpenMode(NSString *path, unsigned long long total,
     // Huge files: ask which part to open (threshold from Preferences > Performance).
     BOOL askSection = NO;
     unsigned long long offset = 0, length = 0;
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     unsigned long long fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil][NSFileSize] unsignedLongLongValue];
     NSInteger thresholdMB = MAX(1, [ud integerForKey:kPrefLargeFileSizeMB]);
     if ([ud boolForKey:kPrefLargeFileEnabled] && fileSize > (unsigned long long)thresholdMB * 1000000ULL) {

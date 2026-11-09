@@ -1,4 +1,5 @@
 #import "DocumentListPanel.h"
+#import "NppPaths.h"
 #import "EditorView.h"
 #import "StyleConfiguratorWindowController.h"
 #import "NppThemeManager.h"
@@ -84,7 +85,7 @@ static void _docFields(EditorView *ed, NSString **outName,
         _items = @[];
         _sortKey = nil;
         _sortAscending = YES;
-        { CGFloat z = [[NSUserDefaults standardUserDefaults] floatForKey:@"PanelZoom_DocumentList"]; _panelFontSize = z >= 8 ? z : 11; }
+        { CGFloat z = [NppUserDefaults() floatForKey:@"PanelZoom_DocumentList"]; _panelFontSize = z >= 8 ? z : 11; }
         [self _buildLayout];
     }
     return self;
@@ -93,7 +94,7 @@ static void _docFields(EditorView *ed, NSString **outName,
 - (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
 
 - (void)_buildLayout {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     id ve = [ud objectForKey:kDocListShowExt];  _showExt  = ve ? [ve boolValue] : YES;
     id vp = [ud objectForKey:kDocListShowPath]; _showPath = vp ? [vp boolValue] : YES;
 
@@ -418,19 +419,19 @@ static void _docFields(EditorView *ed, NSString **outName,
 
 - (void)_toggleExtColumn:(id)sender {
     _showExt = !_showExt;
-    [[NSUserDefaults standardUserDefaults] setBool:_showExt forKey:kDocListShowExt];
+    [NppUserDefaults() setBool:_showExt forKey:kDocListShowExt];
     [_tableView tableColumnWithIdentifier:@"ext"].hidden = !_showExt;
 }
 
 - (void)_togglePathColumn:(id)sender {
     _showPath = !_showPath;
-    [[NSUserDefaults standardUserDefaults] setBool:_showPath forKey:kDocListShowPath];
+    [NppUserDefaults() setBool:_showPath forKey:kDocListShowPath];
     [_tableView tableColumnWithIdentifier:@"path"].hidden = !_showPath;
 }
 
 #pragma mark - Panel Zoom
 
-- (void)_saveZoom { [[NSUserDefaults standardUserDefaults] setFloat:_panelFontSize forKey:@"PanelZoom_DocumentList"]; }
+- (void)_saveZoom { [NppUserDefaults() setFloat:_panelFontSize forKey:@"PanelZoom_DocumentList"]; }
 - (void)panelZoomIn    { _panelFontSize = MIN(_panelFontSize + 1, 28); _tableView.rowHeight = _panelFontSize + 6; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomOut   { _panelFontSize = MAX(_panelFontSize - 1, 8);  _tableView.rowHeight = _panelFontSize + 6; [_tableView reloadData]; [self _saveZoom]; }
 - (void)panelZoomReset { _panelFontSize = 11; _tableView.rowHeight = _panelFontSize + 6; [_tableView reloadData]; [self _saveZoom]; }

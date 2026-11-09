@@ -1,9 +1,10 @@
 #import "EditorView.h"
+#import "NppPaths.h"
 
 // Window fade (window opacity slider below 100%) halves the contrast of light themes.
 // Pure black text and a stronger current-line tint keep the letters readable while faded.
 static BOOL NppWindowIsFaded(void) {
-    double a = [[NSUserDefaults standardUserDefaults] doubleForKey:@"NPPWindowOpacity"];
+    double a = [NppUserDefaults() doubleForKey:@"NPPWindowOpacity"];
     return a >= 0.3 && a < 1.0;
 }
 
@@ -22,7 +23,7 @@ NSString *const kPrefEditorTheme = @"NPPEditorTheme";
 
 // Replaces the editor text colours when an explicit editor theme is chosen.
 static void NppApplyEditorThemeOverride(NSColor **fg, NSColor **bg) {
-    NSInteger et = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefEditorTheme];
+    NSInteger et = [NppUserDefaults() integerForKey:kPrefEditorTheme];
     if (et == 2) {
         *fg = [NSColor colorWithSRGBRed:0xDC/255.0 green:0xDC/255.0 blue:0xCC/255.0 alpha:1.0];
         *bg = [NSColor colorWithSRGBRed:0x3F/255.0 green:0x3F/255.0 blue:0x3F/255.0 alpha:1.0];
@@ -31,7 +32,6 @@ static void NppApplyEditorThemeOverride(NSColor **fg, NSColor **bg) {
         *bg = [NSColor whiteColor];
     }
 }
-#import "NppPaths.h"
 #import "NppApplication.h"
 #import "NppLangsManager.h"
 #import "UserDefineLangManager.h"
@@ -288,12 +288,36 @@ static NSStringEncoding canonicalCJKEncoding(NSStringEncoding ns) {
 // disabled "Enable Large File Restriction" entirely, returns SIZE_MAX so no
 // file ever crosses the threshold.
 static NSUInteger nppLargeFileThreshold(void) {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if (![ud boolForKey:kPrefLargeFileEnabled]) return NSUIntegerMax;
     NSInteger mb = [ud integerForKey:kPrefLargeFileSizeMB];
     if (mb < 1)    mb = 1;
     if (mb > 2046) mb = 2046;
     return (NSUInteger)mb * 1024UL * 1024UL;
+}
+
+static int nppDefaultEOL(void) {
+    id value = [NppUserDefaults() objectForKey:kPrefEOLType];
+    // The preference popup uses CRLF/LF/CR; Scintilla's enum uses CRLF/CR/LF.
+    if (!value) return SC_EOL_LF;
+    switch ([value integerValue]) {
+        case 0: return SC_EOL_CRLF;
+        case 2: return SC_EOL_CR;
+        default: return SC_EOL_LF;
+    }
+}
+
+// Use the first line ending for newly inserted text. Never normalize the loaded
+// bytes: mixed line endings stay intact until the user explicitly converts them.
+static int nppDetectEOL(NSData *data) {
+    const uint8_t *bytes = (const uint8_t *)data.bytes;
+    NSUInteger length = data.length;
+    for (NSUInteger i = 0; i < length; ++i) {
+        if (bytes[i] == '\r')
+            return i + 1 < length && bytes[i + 1] == '\n' ? SC_EOL_CRLF : SC_EOL_CR;
+        if (bytes[i] == '\n') return SC_EOL_LF;
+    }
+    return nppDefaultEOL();
 }
 
 @implementation EditorView {
@@ -359,6 +383,7 @@ static NSUInteger nppLargeFileThreshold(void) {
     _scintillaView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     _scintillaView.delegate = self;
     [self addSubview:_scintillaView];
+    [_scintillaView message:SCI_SETEOLMODE wParam:nppDefaultEOL()];
 
     // Use legacy-style scrollers (shows arrows) and auto-hide when content fits.
     [self _applyLegacyScrollerStyle];
@@ -417,6 +442,7 @@ static NSUInteger nppLargeFileThreshold(void) {
     if (!buf) return;
     [source.scintillaView message:SCI_GETTEXT wParam:(uptr_t)(len + 1) lParam:(sptr_t)buf];
     [_scintillaView message:SCI_SETTEXT wParam:0 lParam:(sptr_t)buf];
+    [_scintillaView message:SCI_SETEOLMODE wParam:[source.scintillaView message:SCI_GETEOLMODE]];
     free(buf);
 }
 
@@ -632,6 +658,7 @@ static NSUInteger NppFindLastNewline(const uint8_t *buf, NSUInteger from, NSUInt
     [_scintillaView message:SCI_SETREADONLY wParam:0 lParam:0];
     [_scintillaView message:SCI_CLEARALL wParam:0 lParam:0];
     [_scintillaView message:SCI_ADDTEXT wParam:(uptr_t)section.length lParam:(sptr_t)section.bytes];
+    [_scintillaView message:SCI_SETEOLMODE wParam:nppDetectEOL(section)];
     [_scintillaView message:SCI_EMPTYUNDOBUFFER wParam:0 lParam:0];
     [_scintillaView message:SCI_SETSAVEPOINT wParam:0 lParam:0];
     [_scintillaView message:SCI_GOTOPOS wParam:0 lParam:0];
@@ -650,7 +677,7 @@ static NSUInteger NppFindLastNewline(const uint8_t *buf, NSUInteger from, NSUInt
 
     // Huge sections: no syntax colouring and no word wrap, as for large files.
     [self setLanguage:@""];
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileNoWrap]) {
+    if ([NppUserDefaults() boolForKey:kPrefLargeFileNoWrap]) {
         _wordWrapEnabled = NO;
         [_scintillaView message:SCI_SETWRAPMODE wParam:SC_WRAP_NONE lParam:0];
     }
@@ -670,7 +697,7 @@ static NSUInteger NppFindLastNewline(const uint8_t *buf, NSUInteger from, NSUInt
         // ≥2 GB — smaller large files still prompt the user, since the prompt
         // there is more about "you're about to lose syntax/undo" than
         // "this might hang the app." Matches Windows NPP behavior.
-        BOOL suppress2GB = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileSuppress2GBWarning]
+        BOOL suppress2GB = [NppUserDefaults() boolForKey:kPrefLargeFileSuppress2GBWarning]
                            && fileSize >= (2ULL * 1024 * 1024 * 1024);
         if (!suppress2GB) {
             NSString *sizeMB = [NSString stringWithFormat:@"%.0f MB",
@@ -867,6 +894,7 @@ static NSUInteger NppFindLastNewline(const uint8_t *buf, NSUInteger from, NSUInt
     [_scintillaView message:SCI_ADDTEXT
                      wParam:(uptr_t)utf8Data.length
                      lParam:(sptr_t)utf8Data.bytes];
+    [_scintillaView message:SCI_SETEOLMODE wParam:nppDetectEOL(utf8Data)];
     _filePath = [path copy];
     _fileEncoding = enc;
     _hasBOM = hasBOM;
@@ -897,7 +925,7 @@ static NSUInteger NppFindLastNewline(const uint8_t *buf, NSUInteger from, NSUInt
         // Performance pref — turn off word wrap for large files. Word-wrap on
         // a multi-million-line buffer is dominated by wrap-recompute time, so
         // even users who normally wrap usually want it off for huge files.
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileNoWrap]) {
+        if ([NppUserDefaults() boolForKey:kPrefLargeFileNoWrap]) {
             _wordWrapEnabled = NO;
             [_scintillaView message:SCI_SETWRAPMODE wParam:SC_WRAP_NONE];
         }
@@ -1331,7 +1359,7 @@ static BOOL (^sLossySaveConfirmHandler)(NSString *encodingName) = nil;
     // File Status Auto-Detection (Preferences > MISC, PR #116). When off, ignore
     // external on-disk changes — but never override an explicit tail -f
     // monitoring tab, which is a per-tab opt-in independent of this global setting.
-    NSUserDefaults *ud  = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud  = NppUserDefaults();
     BOOL autoDetect     = [ud boolForKey:kPrefFileStatusAutoDetection];
     BOOL updateSilently = [ud boolForKey:kPrefFileStatusUpdateSilently];
     if (!autoDetect && !_monitoringMode) return;
@@ -1663,6 +1691,7 @@ static BOOL (^sLossySaveConfirmHandler)(NSString *encodingName) = nil;
     [_scintillaView message:SCI_SETREADONLY wParam:0 lParam:0];
     [_scintillaView message:SCI_CLEARALL wParam:0 lParam:0];
     [_scintillaView message:SCI_ADDTEXT wParam:(uptr_t)utf8Data.length lParam:(sptr_t)utf8Data.bytes];
+    [_scintillaView message:SCI_SETEOLMODE wParam:nppDetectEOL(utf8Data)];
     [_scintillaView message:SCI_GOTOPOS wParam:0 lParam:0];
     [_scintillaView message:SCI_EMPTYUNDOBUFFER];
     _dirtyFromBackup = NO;
@@ -1801,7 +1830,7 @@ static NSColor *nppColorFromHex(NSString *hex) {
     // own value).
     NPPStyleEntry *gov = [store globalStyleNamed:@"Global override"];
     NPPStyleEntry *gsDefault = [store globalStyleNamed:@"Default Style"];
-    NSUserDefaults *_ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *_ud = NppUserDefaults();
     if (gov && [_ud boolForKey:kPrefGlobalOverrideEnableFg]       && gov.fgColor)        fg       = gov.fgColor;
     if (gov && [_ud boolForKey:kPrefGlobalOverrideEnableBg]       && gov.bgColor)        bg       = gov.bgColor;
     if (gov && [_ud boolForKey:kPrefGlobalOverrideEnableFont]     && gov.fontName.length>0) fontName = gov.fontName;
@@ -1949,7 +1978,7 @@ static NSColor *nppColorFromHex(NSString *hex) {
     [sci message:SCI_SETEXTRAASCENT  wParam:0 lParam:0];
     [sci message:SCI_SETEXTRADESCENT wParam:0 lParam:0];
 
-    double mult = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefLineHeightMultiplier];
+    double mult = [NppUserDefaults() doubleForKey:kPrefLineHeightMultiplier];
     if (mult <= 1.0) return;  // 1.0 (or zero/missing pref) = no extras, no work
 
     sptr_t baseH = [sci message:SCI_TEXTHEIGHT wParam:0 lParam:0];
@@ -2022,7 +2051,7 @@ static NSColor *nppColorFromHex(NSString *hex) {
     // -applyThemeColors for the rationale (Windows setStyle() applies the
     // override to STYLE_DEFAULT too).
     NPPStyleEntry *gov = [storeD globalStyleNamed:@"Global override"];
-    NSUserDefaults *_ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *_ud = NppUserDefaults();
     if (gov && [_ud boolForKey:kPrefGlobalOverrideEnableFg]       && gov.fgColor)         fg       = gov.fgColor;
     if (gov && [_ud boolForKey:kPrefGlobalOverrideEnableBg]       && gov.bgColor)         bg       = gov.bgColor;
     if (gov && [_ud boolForKey:kPrefGlobalOverrideEnableFont]     && gov.fontName.length>0) fontName = gov.fontName;
@@ -2078,9 +2107,8 @@ static NSColor *nppColorFromHex(NSString *hex) {
         [sci message:SCI_SETWHITESPACEFORE wParam:1 lParam:sciColor(gsWhiteSpace.fgColor)];
 
     // Indentation guides — honour the persisted kPrefShowIndentGuides toggle.
-    BOOL showGuides = [[NSUserDefaults standardUserDefaults] boolForKey:kPrefShowIndentGuides];
+    BOOL showGuides = [NppUserDefaults() boolForKey:kPrefShowIndentGuides];
     [sci message:SCI_SETINDENTATIONGUIDES wParam:(showGuides ? SC_IV_LOOKBOTH : SC_IV_NONE)];
-    [sci message:SCI_SETEOLMODE wParam:SC_EOL_LF];
     NPPStyleEntry *gsIndent = [store globalStyleNamed:@"Indent guideline style"];
     if (gsIndent.fgColor) [sci setColorProperty:SCI_STYLESETFORE parameter:37 value:gsIndent.fgColor];
     if (gsIndent.bgColor) [sci setColorProperty:SCI_STYLESETBACK parameter:37 value:gsIndent.bgColor];
@@ -2756,7 +2784,7 @@ int NppScintillaDefaultKeyCombos(int sciID, int *combos, int maxCombos) {
 - (void)recomputeLineNumberMargin {
     ScintillaView *sci = _scintillaView;
     if (!sci) return;
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if (![ud boolForKey:kPrefShowLineNumbers]) return;
     if (![ud boolForKey:kPrefLineNumDynWidth]) return;
 
@@ -2769,7 +2797,7 @@ int NppScintillaDefaultKeyCombos(int sciID, int *combos, int maxCombos) {
 }
 
 - (void)applyPreferencesFromDefaults {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     ScintillaView *sci = _scintillaView;
 
     // ── Per-language indent settings ──
@@ -2995,7 +3023,7 @@ static NSString *nppDefaultWordChars(ScintillaView *sci) {
 // printable ASCII from kPrefWordCharsAdded is honored; SCI_SETWORDCHARS treats
 // the payload as a byte set, so non-ASCII bytes would be meaningless.
 - (void)applyWordCharsFromDefaults {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     ScintillaView *sci = _scintillaView;
     NSString *defaultList = nppDefaultWordChars(sci);
 
@@ -3199,7 +3227,7 @@ static const int kGitGutterMargin   = 4;  // margin index for git gutter
     // on the override row (nil fg/bg, empty fontName, fontSize=0), the
     // corresponding per-style attribute is left to fall back to STYLE_DEFAULT
     // (we skip the SCI_STYLESET* call). Caller has just run STYLECLEARALL.
-    NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *d = NppUserDefaults();
     BOOL ovFg        = [d boolForKey:kPrefGlobalOverrideEnableFg];
     BOOL ovBg        = [d boolForKey:kPrefGlobalOverrideEnableBg];
     BOOL ovFont      = [d boolForKey:kPrefGlobalOverrideEnableFont];
@@ -4109,7 +4137,7 @@ static const int kIndicatorIncSearch = 28; // Scintilla indicator slot for incre
 - (void)updateBraceHighlight {
     // Performance pref — skip brace match for large files unless explicitly allowed.
     if (_largeFileMode &&
-        ![[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileAllowBraceMatch]) return;
+        ![NppUserDefaults() boolForKey:kPrefLargeFileAllowBraceMatch]) return;
 
     ScintillaView *sci = _scintillaView;
     sptr_t caretPos = [sci message:SCI_GETCURRENTPOS];
@@ -4159,12 +4187,12 @@ static const int kIndicatorIncSearch = 28; // Scintilla indicator slot for incre
     [sci message:SCI_INDICATORCLEARRANGE wParam:0 lParam:[sci message:SCI_GETLENGTH]];
 
     // Bail if smart highlighting is disabled
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:kPrefSmartHighlight]) return;
+    if (![NppUserDefaults() boolForKey:kPrefSmartHighlight]) return;
 
     // Performance pref — skip smart highlight for large files unless explicitly allowed.
     // Walking a multi-million-line buffer for selection-text matches dominates wall time.
     if (_largeFileMode &&
-        ![[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileAllowSmartHilite]) return;
+        ![NppUserDefaults() boolForKey:kPrefLargeFileAllowSmartHilite]) return;
 
     sptr_t selStart = [sci message:SCI_GETSELECTIONSTART];
     sptr_t selEnd   = [sci message:SCI_GETSELECTIONEND];
@@ -4181,7 +4209,7 @@ static const int kIndicatorIncSearch = 28; // Scintilla indicator slot for incre
     const char *needle = selText.UTF8String;
     NSInteger needleLen = (NSInteger)strlen(needle);
     {
-        NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+        NSUserDefaults *ud = NppUserDefaults();
         int flags = 0;
         if ([ud boolForKey:kPrefSmartHiliteCase]) flags |= SCFIND_MATCHCASE;
         if ([ud boolForKey:kPrefSmartHiliteWord]) flags |= SCFIND_WHOLEWORD;
@@ -4239,7 +4267,7 @@ static NSRegularExpression *nppClickableSchemeRegex(NSString *schemes) {
 // draws an underline. Fullbox mode draws a filled box on hover.
 - (void)_configureClickableLinkIndicator {
     ScintillaView *sci = _scintillaView;
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     BOOL noUnderline = [ud boolForKey:kPrefClickableLinkNoUnderline];
     BOOL fullbox     = [ud boolForKey:kPrefClickableLinkFullBox];
     int baseStyle  = noUnderline ? INDIC_TEXTFORE : INDIC_PLAIN;
@@ -4255,7 +4283,7 @@ static NSRegularExpression *nppClickableSchemeRegex(NSString *schemes) {
 // only the on-screen byte range is scanned (mirrors Windows NPP addHotSpot).
 - (void)updateClickableLinks {
     ScintillaView *sci = _scintillaView;
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
 
     [self _configureClickableLinkIndicator];
 
@@ -4364,7 +4392,7 @@ static NSRegularExpression *nppClickableSchemeRegex(NSString *schemes) {
 // delimiter/word handlers). Only plain double-clicks (no modifiers) qualify —
 // ⌘ is reserved for delimiter selection.
 - (BOOL)_handleClickableLinkDoubleClick:(SCNotification *)notification {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if (![ud boolForKey:kPrefClickableLinkEnable]) return NO;
     if (_largeFileMode && ![ud boolForKey:kPrefLargeFileAllowURLClick]) return NO;
     if (notification->modifiers != 0) return NO;  // ⌘ etc. handled elsewhere
@@ -4791,7 +4819,7 @@ static NSSet<NSString *> *_cLikeLanguages() {
         return;
 
     // kPrefAutoIndent: 0=None, 1=Advanced, 2=Basic
-    NSInteger autoIndentMode = [[NSUserDefaults standardUserDefaults] integerForKey:kPrefAutoIndent];
+    NSInteger autoIndentMode = [NppUserDefaults() integerForKey:kPrefAutoIndent];
     if (autoIndentMode == 0)
         return;
 
@@ -4969,7 +4997,7 @@ static NSSet<NSString *> *_cLikeLanguages() {
     [self _maintainIndentation:ch];
 
     // Auto-close bracket pairs — only when enabled and no existing selection
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kPrefAutoCloseBrackets] &&
+    if ([NppUserDefaults() boolForKey:kPrefAutoCloseBrackets] &&
         [sci message:SCI_GETSELECTIONSTART] == [sci message:SCI_GETSELECTIONEND]) {
         const char *closeStr = nullptr;
         if      (ch == '(') closeStr = ")";
@@ -4984,12 +5012,12 @@ static NSSet<NSString *> *_cLikeLanguages() {
     }
 
     // Function parameters hint: auto-trigger after typing '('
-    if (ch == '(' && [[NSUserDefaults standardUserDefaults] boolForKey:kPrefFuncParamsHint]) {
+    if (ch == '(' && [NppUserDefaults() boolForKey:kPrefFuncParamsHint]) {
         [self triggerFunctionParametersHint:nil];
     }
 
     // Word completion: trigger on word characters when auto-complete is enabled
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     if ([ud boolForKey:kPrefAutoCompleteEnable]) {
         if (isalnum(ch) || ch == '_') {
             [self updateAutoComplete];
@@ -5003,10 +5031,10 @@ static NSSet<NSString *> *_cLikeLanguages() {
     // Performance pref — skip word-completion suggestions for large files unless allowed.
     // The autocomplete word-list build walks the whole document.
     if (_largeFileMode &&
-        ![[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileAllowAutoComplete]) return;
+        ![NppUserDefaults() boolForKey:kPrefLargeFileAllowAutoComplete]) return;
 
     // Honour configurable minimum-character threshold (default 1, matching NPP Windows)
-    NSInteger minChars = [[NSUserDefaults standardUserDefaults]
+    NSInteger minChars = [NppUserDefaults()
                           integerForKey:kPrefAutoCompleteMinChars];
     if (minChars < 1) minChars = 1;
     [self _showWordCompletionWithMinPrefix:minChars beepOnEmpty:NO];
@@ -5193,7 +5221,7 @@ static NSSet<NSString *> *_cLikeLanguages() {
 - (void)_handleDelimiterDoubleClick:(SCNotification *)notification {
     if (notification->modifiers != SCMOD_CTRL) return;  // plain or other-mod double-click → Scintilla handles
 
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *ud = NppUserDefaults();
     NSString *openS  = [ud stringForKey:kPrefDelimOpen]  ?: @"(";
     NSString *closeS = [ud stringForKey:kPrefDelimClose] ?: @")";
     if (openS.length == 0 || closeS.length == 0) return;
@@ -6357,7 +6385,7 @@ static const unsigned int kSCI_GetBidirectional = 2708;
     // Window scan is bounded (500 KB ± caret) so it's not catastrophic, but the
     // user has explicitly opted out of completion for huge files.
     if (_largeFileMode &&
-        ![[NSUserDefaults standardUserDefaults] boolForKey:kPrefLargeFileAllowAutoComplete]) {
+        ![NppUserDefaults() boolForKey:kPrefLargeFileAllowAutoComplete]) {
         NSBeep();
         return;
     }
